@@ -120,11 +120,11 @@ private fun LevelNode(n: Int, current: Int, a: Color, b: Color, onPlay: (Int) ->
     val boss = TowerLevels.isBoss(n)
     val reached = n <= current
     val isCurrent = n == current
-    val size = if (boss) 54.dp else 46.dp
+    val nodeSize = if (boss) 54.dp else 46.dp
     Box(Modifier.size(54.dp), contentAlignment = Alignment.Center) {
         Box(
             Modifier
-                .size(size)
+                .size(nodeSize)
                 .clip(CircleShape)
                 .background(
                     when {
