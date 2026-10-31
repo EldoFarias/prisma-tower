@@ -88,6 +88,8 @@
     <string name="ball_planet">Planète</string>
     <string name="ball_eight">Boule 8</string>
     <string name="ball_lava">Lave</string>
+    <string name="close">Fermer</string>
+    <string name="preview">APERÇU</string>
     <string name="detailed_scenery">Décor détaillé</string>
     <string name="tower_castle">Château</string>
     <string name="tower_desert">Désert</string>

@@ -43,6 +43,9 @@ import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ArrowBack
 import androidx.compose.material.icons.filled.Check
+import androidx.compose.material.icons.filled.Close
+import androidx.compose.foundation.layout.BoxWithConstraints
+import androidx.compose.ui.draw.drawBehind
 import androidx.compose.material.icons.filled.Lock
 import androidx.compose.material3.Icon
 import androidx.compose.material3.Text
@@ -91,39 +94,66 @@ fun ShopScreen(host: GameHost, ads: AdsManager, sound: SoundManager, onBack: () 
     fun preview() = host.applyLooks(towerSel, ballSel)
     BackHandler(onBack = onBack)
 
-    Box(Modifier.fillMaxSize()) {
-        Column(Modifier.fillMaxSize()) {
+    // The shop slides up and covers the whole screen; only a framed window shows the live 3D preview.
+    val slide = remember { Animatable(1f) }
+    LaunchedEffect(Unit) { slide.animateTo(0f, spring(dampingRatio = 0.85f, stiffness = 380f)) }
+    val panelBg = Brush.verticalGradient(listOf(Color(0xFF1B1240), Color(0xFF0B0720)))
+    BoxWithConstraints(Modifier.fillMaxSize()) {
+        val screenH = maxHeight
+        Column(
+            Modifier
+                .fillMaxSize()
+                .graphicsLayer { translationY = slide.value * size.height },
+        ) {
             Row(
                 Modifier
                     .fillMaxWidth()
-                    .background(Brush.verticalGradient(listOf(Color(0xB0000000), Color.Transparent)))
+                    .background(Color(0xFF130C30))
                     .statusBarsPadding()
                     .padding(horizontal = 16.dp, vertical = 8.dp),
                 verticalAlignment = Alignment.CenterVertically,
             ) {
-                GlassCircleButton(onClick = onBack) {
-                    Icon(Icons.AutoMirrored.Filled.ArrowBack, contentDescription = null, tint = Palette.TextPrimary)
-                }
-                Spacer(Modifier.width(14.dp))
                 Text(stringResource(R.string.shop), style = Styles.gradient(30), modifier = Modifier.weight(1f))
                 CoinPill(Progress.coins, onPlus = {
                     if (ads.adsReady && ads.rewardedReady) {
                         ads.showRewarded { Progress.addCoins(VIDEO_COINS); sound.play(Sfx.COIN) }
                     } else Toast.makeText(context, R.string.no_video, Toast.LENGTH_SHORT).show()
                 })
+                Spacer(Modifier.width(10.dp))
+                GlassCircleButton(onClick = onBack) {
+                    Icon(Icons.Default.Close, contentDescription = stringResource(R.string.close), tint = Palette.TextPrimary)
+                }
             }
-            Spacer(Modifier.weight(0.75f))
+            // Live preview window (the 3D view behind shows through here).
+            Box(
+                Modifier
+                    .fillMaxWidth()
+                    .height(screenH * 0.34f)
+                    .drawBehind {
+                        val edge = 18.dp.toPx()
+                        drawRect(Brush.verticalGradient(listOf(Color(0xFF130C30), Color.Transparent), endY = edge))
+                        drawRect(Brush.verticalGradient(listOf(Color.Transparent, Color(0xFF1B1240)), startY = size.height - edge, endY = size.height), topLeft = Offset(0f, size.height - edge), size = Size(size.width, edge))
+                    },
+            ) {
+                Text(
+                    stringResource(R.string.preview),
+                    style = Styles.plain(12, Color.White, FontWeight.ExtraBold),
+                    modifier = Modifier
+                        .align(Alignment.TopStart)
+                        .padding(12.dp)
+                        .clip(RoundedCornerShape(50))
+                        .background(Color(0x66000000))
+                        .padding(horizontal = 10.dp, vertical = 4.dp),
+                )
+            }
 
-            val shape = RoundedCornerShape(topStart = 30.dp, topEnd = 30.dp)
             Column(
                 Modifier
                     .weight(1f)
                     .fillMaxWidth()
-                    .clip(shape)
-                    .background(Brush.verticalGradient(listOf(Color(0xF0181036), Color(0xFA0B0720))))
-                    .border(1.dp, Palette.GlassBorder, shape)
+                    .background(panelBg)
                     .navigationBarsPadding()
-                    .padding(horizontal = 16.dp, vertical = 14.dp),
+                    .padding(horizontal = 16.dp, vertical = 12.dp),
                 verticalArrangement = Arrangement.spacedBy(12.dp),
             ) {
                 Row(horizontalArrangement = Arrangement.spacedBy(10.dp)) {

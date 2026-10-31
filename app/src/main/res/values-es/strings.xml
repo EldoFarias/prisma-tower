@@ -88,6 +88,8 @@
     <string name="ball_planet">Planeta</string>
     <string name="ball_eight">Bola 8</string>
     <string name="ball_lava">Lava</string>
+    <string name="close">Cerrar</string>
+    <string name="preview">VISTA PREVIA</string>
     <string name="detailed_scenery">Escenario detallado</string>
     <string name="tower_castle">Castillo</string>
     <string name="tower_desert">Desierto</string>
