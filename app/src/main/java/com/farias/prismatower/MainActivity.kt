@@ -114,8 +114,8 @@ class MainActivity : ComponentActivity() {
                             Screen.GAME -> {
                                 // Full screen while playing: hide the status bar (swipe down shows it for a moment).
                                 androidx.compose.runtime.DisposableEffect(Unit) {
-                                    setImmersive(true)
-                                    onDispose { setImmersive(false) }
+                                    setGameFullScreen(true)
+                                    onDispose { setGameFullScreen(false) }
                                 }
                                 GameScreen(
                                 host = host,
@@ -186,7 +186,7 @@ class MainActivity : ComponentActivity() {
     private var immersive = false
 
     /** Hides (or shows back) the status bar. Re-applied when the window regains focus (some ROMs bring it back). */
-    private fun setImmersive(on: Boolean) {
+    private fun setGameFullScreen(on: Boolean) {
         immersive = on
         val c = androidx.core.view.WindowCompat.getInsetsController(window, window.decorView)
         if (on) {
@@ -199,7 +199,7 @@ class MainActivity : ComponentActivity() {
 
     override fun onWindowFocusChanged(hasFocus: Boolean) {
         super.onWindowFocusChanged(hasFocus)
-        if (hasFocus && immersive) setImmersive(true)
+        if (hasFocus && immersive) setGameFullScreen(true)
     }
 
     override fun onResume() {
