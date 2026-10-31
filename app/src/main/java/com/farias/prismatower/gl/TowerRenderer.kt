@@ -21,6 +21,15 @@ import kotlin.math.tan
 class TowerRenderer(private val game: TowerGame) : GLSurfaceView.Renderer {
 
     companion object {
+        // Instance ranges (each RANGE slots): solid, danger, danger halo, glass, portal, faded ("ghost").
+        const val RANGE = 144
+        const val RANGES = 6
+        const val R_SOLID = 0
+        const val R_DANGER = 1
+        const val R_HALO = 2
+        const val R_GLASS = 3
+        const val R_PORTAL = 4
+        const val R_GHOST = 5
         /** The sky is rendered at 1/BG_DIV of the screen size. */
         const val BG_DIV = 3
         /** Radius of the paved top of the base. */
@@ -84,7 +93,7 @@ class TowerRenderer(private val game: TowerGame) : GLSurfaceView.Renderer {
 
     // Instanced ring slices: one draw call for all solid slices, one for danger, one for halos.
     private val instVbo = IntArray(1)
-    private val instMax = 3 * 12 * 12
+    private val instMax = RANGES * RANGE
     private val inst = FloatArray(instMax * Mesh.INST_FLOATS)
     private lateinit var instBuf: FloatBuffer
     private val ptScratch = FloatArray(2200 * 8)
@@ -102,6 +111,17 @@ class TowerRenderer(private val game: TowerGame) : GLSurfaceView.Renderer {
     private val smashTint = floatArrayOf(1f, 0.5f, 0.1f)
     private val fireTrail = floatArrayOf(1f, 0.45f, 0.1f)
     private val white = floatArrayOf(1f, 1f, 1f)
+    private val blueTrail = floatArrayOf(0.3f, 0.6f, 1f)
+    private val time0: Float get() = game.clock
+    private val glassWhole = floatArrayOf(0.72f, 0.88f, 1f)
+    private val glassCracked = floatArrayOf(0.95f, 0.98f, 1f)
+    private val coinGold = floatArrayOf(1f, 0.8f, 0.22f)
+    private val coinDark = floatArrayOf(0.7f, 0.42f, 0.05f)
+    private val coinEmis = floatArrayOf(0.25f, 0.16f, 0.02f)
+    private val coinGlow = floatArrayOf(1f, 0.8f, 0.3f)
+    private val coinPos = FloatArray(3 * 16)
+    private var coinCount = 0
+    private val rangeCount = IntArray(RANGES)
 
     // Colours derived from the current look, recomputed only when the look changes.
     private var lookCached: TowerLook? = null
@@ -303,10 +323,8 @@ class TowerRenderer(private val game: TowerGame) : GLSurfaceView.Renderer {
 
         // Rings: the goal is one mesh; all other slices are packed into one instanced draw per kind.
         useLit(litRing)
-        var nSolid = 0
-        var nDanger = 0
-        val dangerBase = instMax / 3
-        val haloBase = 2 * instMax / 3
+        val counts = rangeCount
+        java.util.Arrays.fill(counts, 0)
         for (i in first..last) {
             if (i < sim.next) continue
             val p = sim.level.platforms[i]
@@ -322,39 +340,32 @@ class TowerRenderer(private val game: TowerGame) : GLSurfaceView.Renderer {
                 continue
             }
             game.ringColor(i, rc)
+            val faded = p.faded(sim.time)
             for (k in 0 until Tower.SLICES) {
-                val type = p.slices[k]
-                if (type == SliceType.GAP) continue
                 val ang = rot + k * Tower.SLICE_ANGLE + seam / 2f
-                if (type == SliceType.DANGER) {
-                    if (nDanger >= dangerBase) continue
-                    putInst(dangerBase + nDanger, ang, y, 1f, 1f, t.danger)
-                    putInst(haloBase + nDanger, ang, y, 1.05f, 1.3f, t.danger)
-                    nDanger++
-                } else {
-                    if (nSolid >= dangerBase) continue
-                    putInst(nSolid, ang, y, 1f, 1f, rc)
-                    nSolid++
+                when (p.slices[k]) {
+                    SliceType.GAP -> Unit
+                    SliceType.DANGER -> {
+                        addInst(R_DANGER, ang, y, 1f, 1f, t.danger)
+                        addInst(R_HALO, ang, y, 1.05f, 1.3f, t.danger)
+                    }
+                    SliceType.SOLID -> addInst(if (faded) R_GHOST else R_SOLID, ang, y, 1f, 1f, rc)
+                    SliceType.GLASS -> {
+                        val st = sim.glass[i * Tower.SLICES + k].toInt()
+                        if (st < 2) addInst(R_GLASS, ang, y, 1f, 1f, if (st == 0) glassWhole else glassCracked)
+                    }
+                    SliceType.PORTAL -> addInst(R_PORTAL, ang, y, 1f, 1f, rc)
                 }
             }
         }
-        // Upload only the filled parts of the three ranges.
+        // Upload only the filled part of each range.
         GLES30.glBindBuffer(GLES30.GL_ARRAY_BUFFER, instVbo[0])
         val f = Mesh.INST_FLOATS
-        uploadInst(0, nSolid * f)
-        uploadInst(dangerBase * f, nDanger * f)
-        uploadInst(haloBase * f, nDanger * f)
+        for (r in 0 until RANGES) uploadInst(r * RANGE * f, counts[r] * f)
         lit.i("uInst", 1)
-        if (nSolid > 0) {
-            material(0, 0, rc, zero, zero, gloss = 55f + 60f * t.metalRings, metal = t.metalRings)
-            slice.bindInstances(instVbo[0], 0)
-            slice.drawInstanced(nSolid)
-        }
-        if (nDanger > 0) {
-            material(4, 0, t.danger, zero, zero, gloss = 90f, metal = 0f)
-            slice.bindInstances(instVbo[0], dangerBase)
-            slice.drawInstanced(nDanger)
-        }
+        drawRange(R_SOLID, 0, rc, 55f + 60f * t.metalRings, t.metalRings)
+        drawRange(R_DANGER, 4, t.danger, 90f, 0f)
+        drawRange(R_PORTAL, 7, rc, 120f, 0f)
         lit.i("uInst", 0)
 
         // Ball
@@ -380,6 +391,28 @@ class TowerRenderer(private val game: TowerGame) : GLSurfaceView.Renderer {
         lit.m4("uModel", model)
         sphere.draw()
         projectBall(ballY)
+
+        // Coins floating over gaps, spinning.
+        var nCoins = 0
+        for (i in first..last) {
+            if (i < sim.next) continue
+            val p = sim.level.platforms[i]
+            if (p.coin < 0 || sim.coinTaken(i)) continue
+            val a = sim.ringRotation(i) + (p.coin + 0.5f) * Tower.SLICE_ANGLE
+            val cy = Tower.platformTop(i) + 1.25f + 0.12f * sin(time * 3f + i)
+            Matrix.setIdentityM(model, 0)
+            Matrix.translateM(model, 0, Tower.BALL_PATH_R * sin(a), cy, Tower.BALL_PATH_R * kotlin.math.cos(a))
+            Matrix.rotateM(model, 0, time * 160f + i * 40f, 0f, 1f, 0f)
+            Matrix.scaleM(model, 0, 1.25f, 1.25f, 0.35f)
+            material(2, BallStyle.METAL, coinGold, coinDark, coinEmis, gloss = 140f, metal = 1f)
+            lit.m4("uModel", model)
+            sphere.draw()
+            if (nCoins < coinPos.size / 3) {
+                coinPos[nCoins * 3] = Tower.BALL_PATH_R * sin(a); coinPos[nCoins * 3 + 1] = cy; coinPos[nCoins * 3 + 2] = Tower.BALL_PATH_R * kotlin.math.cos(a)
+                nCoins++
+            }
+        }
+        coinCount = nCoins
 
         // ---------------------------------------------------------- transparent passes
         GLES30.glEnable(GLES30.GL_BLEND)
@@ -413,8 +446,17 @@ class TowerRenderer(private val game: TowerGame) : GLSurfaceView.Renderer {
         }
         GLES30.glDisable(GLES30.GL_POLYGON_OFFSET_FILL)
 
-        // Rings flying apart
+        // Glass slices (see-through) and faded slices of blinking rings (ghosts).
         useLit(litRing)
+        lit.i("uInst", 1)
+        lit.f("uAlpha", 0.6f)
+        drawRange(R_GLASS, 8, glassWhole, 180f, 0.3f)
+        lit.f("uAlpha", 0.16f)
+        drawRange(R_GHOST, 0, rc, 40f, 0f)
+        lit.i("uInst", 0)
+        lit.f("uAlpha", 1f)
+
+        // Rings flying apart
         val breaks = game.breaks
         for (bi in breaks.indices) {
             val br = breaks[bi]
@@ -453,12 +495,10 @@ class TowerRenderer(private val game: TowerGame) : GLSurfaceView.Renderer {
 
         // Additive glows: danger halos (one instanced draw) and the goal halo.
         GLES30.glBlendFunc(GLES30.GL_ONE, GLES30.GL_ONE)
-        if (nDanger > 0) {
+        if (rangeCount[R_HALO] > 0) {
             lit.i("uInst", 1)
-            material(3, 0, t.danger, zero, zero, 1f, 0f)
             lit.f("uAlpha", 0.3f + 0.12f * sin(time * 5f))
-            slice.bindInstances(instVbo[0], haloBase)
-            slice.drawInstanced(nDanger)
+            drawRange(R_HALO, 3, t.danger, 1f, 0f)
             lit.i("uInst", 0)
         }
         val goalIdx = sim.level.platforms.size - 1
@@ -635,16 +675,33 @@ class TowerRenderer(private val game: TowerGame) : GLSurfaceView.Renderer {
         }
         // Comet trail behind the ball.
         if (!dead) {
-            val tc = if (fire) fireTrail else game.ball.trail
+            val style = game.trailStyle
+            val tc = when {
+                fire -> fireTrail
+                style == com.farias.prismatower.data.Trails.BLUE_FIRE -> blueTrail
+                style == com.farias.prismatower.data.Trails.GOLD -> coinGold
+                style == com.farias.prismatower.data.Trails.GHOST -> white
+                else -> game.ball.trail
+            }
             val count = game.trailCount
+            val alphaK = if (style == com.farias.prismatower.data.Trails.GHOST) 0.3f else if (style == com.farias.prismatower.data.Trails.NEON) 0.85f else 0.55f
+            val sizeK = if (style == com.farias.prismatower.data.Trails.NEON || style == com.farias.prismatower.data.Trails.GHOST) 1.5f else 1f
             for (idx in 0 until count - 1) {
                 val y = game.trailAt(idx)
                 if (kotlin.math.abs(ballY - y) < 0.05f) continue
                 val k = idx.toFloat() / count
-                put(0f, y, Tower.BALL_PATH_R, tc[0], tc[1], tc[2], 0.55f * k, Tower.BALL_R * (0.9f + 1.4f * k))
+                if (style == com.farias.prismatower.data.Trails.RAINBOW && !fire) {
+                    val h = (idx / 14f + time0 * 0.4f) % 1f
+                    put(0f, y, Tower.BALL_PATH_R, game.hueR(h), game.hueG(h), game.hueB(h), 0.7f * k, Tower.BALL_R * (1f + 1.5f * k))
+                } else {
+                    put(0f, y, Tower.BALL_PATH_R, tc[0], tc[1], tc[2], alphaK * k, Tower.BALL_R * (0.9f + 1.4f * k) * sizeK)
+                }
             }
             // Soft glow around the ball.
             put(0f, ballY, Tower.BALL_PATH_R, tc[0], tc[1], tc[2], if (fire) 0.9f else 0.35f, Tower.BALL_R * (if (fire) 6f else 4f))
+        }
+        for (c in 0 until coinCount) {
+            put(coinPos[c * 3], coinPos[c * 3 + 1], coinPos[c * 3 + 2], coinGlow[0], coinGlow[1], coinGlow[2], 0.45f, 0.9f)
         }
         val limit = min(pa.count, ptCapacity - n)
         for (i in 0 until limit) {
@@ -662,6 +719,22 @@ class TowerRenderer(private val game: TowerGame) : GLSurfaceView.Renderer {
         GLES30.glBindVertexArray(ptVao[0])
         GLES30.glDrawArrays(GLES30.GL_POINTS, 0, n)
         GLES30.glBindVertexArray(0)
+    }
+
+    private fun addInst(range: Int, angle: Float, y: Float, sxz: Float, sy: Float, c: FloatArray) {
+        val n = rangeCount[range]
+        if (n >= RANGE) return
+        putInst(range * RANGE + n, angle, y, sxz, sy, c)
+        rangeCount[range] = n + 1
+    }
+
+    /** Draws instance range [r] with one call, as lit kind [kind]. */
+    private fun drawRange(r: Int, kind: Int, color: FloatArray, gloss: Float, metal: Float) {
+        val n = rangeCount[r]
+        if (n <= 0) return
+        material(kind, 0, color, zero, zero, gloss, metal)
+        slice.bindInstances(instVbo[0], r * RANGE)
+        slice.drawInstanced(n)
     }
 
     private fun putInst(slot: Int, angle: Float, y: Float, sxz: Float, sy: Float, c: FloatArray) {

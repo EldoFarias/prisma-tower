@@ -15,6 +15,8 @@ import androidx.compose.animation.fadeIn
 import androidx.compose.animation.fadeOut
 import androidx.compose.foundation.Canvas
 import androidx.compose.foundation.background
+import androidx.compose.foundation.layout.widthIn
+import androidx.compose.foundation.clickable
 import androidx.compose.foundation.border
 import androidx.compose.foundation.gestures.detectDragGestures
 import androidx.compose.foundation.layout.Arrangement
@@ -110,11 +112,38 @@ fun GameScreen(host: GameHost, ads: AdsManager, sound: SoundManager, onGreatMome
             Row(verticalAlignment = Alignment.CenterVertically) {
                 GlassCircleButton(onClick = { host.pauseGame(true) }) { PauseIcon(Modifier.size(18.dp)) }
                 Spacer(Modifier.width(12.dp))
-                LevelBar(host, Modifier.weight(1f))
-                Spacer(Modifier.width(56.dp))
+                if (host.endless) DepthBar(host, Modifier.weight(1f)) else LevelBar(host, Modifier.weight(1f))
+                Spacer(Modifier.width(12.dp))
+                Box(Modifier.width(44.dp), contentAlignment = Alignment.Center) {
+                    if (host.shields > 0) Text("🛡" + if (host.shields > 1) host.shields.toString() else "", style = Styles.glow(20, Color(0xFF7DD3FC), FontWeight.Black))
+                }
             }
             Spacer(Modifier.height(10.dp))
             ScoreText(host)
+            if (host.coinsThisLevel > 0) {
+                Row(verticalAlignment = Alignment.CenterVertically) {
+                    CoinIcon(Modifier.size(16.dp))
+                    Spacer(Modifier.width(4.dp))
+                    Text("+" + host.coinsThisLevel * GameHost.COIN_VALUE, style = Styles.plain(15, Palette.Gold, FontWeight.Black))
+                }
+            }
+        }
+
+        // Boss tower banner at the start
+        if (host.boss && !host.touched && host.phase == Phase.PLAYING) BossBanner(Modifier.align(Alignment.Center).padding(bottom = 160.dp))
+
+        // A mechanic shown for the first time
+        if (host.notice != 0 && host.phase == Phase.PLAYING) {
+            NoticeCard(host.notice, Modifier.align(Alignment.BottomCenter).padding(bottom = 210.dp, start = 24.dp, end = 24.dp)) { host.clearNotice() }
+        }
+
+        // Shield offer before the first move on hard moments
+        if (!host.touched && host.phase == Phase.PLAYING && host.shields == 0 && ads.rewardedReady &&
+            (host.boss || host.endless || host.failsHere >= 1)
+        ) {
+            ShieldOffer(Modifier.align(Alignment.BottomCenter).navigationBarsPadding().padding(bottom = 80.dp)) {
+                ads.showRewarded { host.addShield() }
+            }
         }
 
         if (!host.touched && host.phase == Phase.PLAYING && (Progress.levelsWon < 3 || host.level <= 2)) {
@@ -132,6 +161,68 @@ fun GameScreen(host: GameHost, ads: AdsManager, sound: SoundManager, onGreatMome
 }
 
 // ------------------------------------------------------------------ HUD
+
+@Composable
+private fun DepthBar(host: GameHost, modifier: Modifier) {
+    Row(modifier, verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.Center) {
+        Text("∞", style = Styles.glow(24, Palette.Cyan, FontWeight.Black))
+        Spacer(Modifier.width(10.dp))
+        Text(stringResource(R.string.depth_x, host.depth), style = Styles.plain(18, Color.White, FontWeight.Black))
+        Spacer(Modifier.width(10.dp))
+        Text(stringResource(R.string.best_x, Progress.bestEndless), style = Styles.plain(13, Palette.TextSecondary, FontWeight.Bold))
+    }
+}
+
+@Composable
+private fun BossBanner(modifier: Modifier) {
+    val t = rememberInfiniteTransition(label = "boss")
+    val s by t.animateFloat(0.95f, 1.06f, infiniteRepeatable(tween(700), RepeatMode.Reverse), label = "s")
+    Column(modifier.graphicsLayer { scaleX = s; scaleY = s }, horizontalAlignment = Alignment.CenterHorizontally) {
+        CrownIcon(Modifier.size(54.dp, 40.dp))
+        Text(stringResource(R.string.boss_tower), style = Styles.glow(30, Palette.Gold, FontWeight.Black))
+        Text(stringResource(R.string.boss_hint), style = Styles.plain(14, Color.White, FontWeight.Bold))
+    }
+}
+
+@Composable
+private fun NoticeCard(textRes: Int, modifier: Modifier, onClose: () -> Unit) {
+    LaunchedEffect(textRes) {
+        delay(5500)
+        onClose()
+    }
+    val shape = RoundedCornerShape(18.dp)
+    Column(
+        modifier
+            .widthIn(max = 380.dp)
+            .clip(shape)
+            .background(Color(0xE6140B33))
+            .border(1.5.dp, Palette.Gold.copy(alpha = 0.7f), shape)
+            .clickable(onClick = onClose)
+            .padding(horizontal = 16.dp, vertical = 12.dp),
+        horizontalAlignment = Alignment.CenterHorizontally,
+    ) {
+        Text(stringResource(R.string.new_mechanic), style = Styles.glow(16, Palette.Gold, FontWeight.Black))
+        Text(stringResource(textRes), style = Styles.plain(15, Color.White, FontWeight.SemiBold), textAlign = TextAlign.Center)
+    }
+}
+
+@Composable
+private fun ShieldOffer(modifier: Modifier, onClick: () -> Unit) {
+    val shape = RoundedCornerShape(50)
+    Row(
+        modifier
+            .clip(shape)
+            .background(Brush.horizontalGradient(listOf(Color(0xFF0EA5E9), Color(0xFF6366F1))))
+            .border(1.dp, Color.White.copy(alpha = 0.4f), shape)
+            .clickable(onClick = onClick)
+            .padding(horizontal = 18.dp, vertical = 10.dp),
+        verticalAlignment = Alignment.CenterVertically,
+    ) {
+        Text("🛡", style = Styles.plain(20, Color.White, FontWeight.Black))
+        Spacer(Modifier.width(8.dp))
+        Text(stringResource(R.string.shield_video), style = Styles.plain(15, Color.White, FontWeight.ExtraBold))
+    }
+}
 
 @Composable
 private fun LevelBar(host: GameHost, modifier: Modifier) {
@@ -322,9 +413,15 @@ private fun DeadOverlay(host: GameHost, ads: AdsManager, sound: SoundManager, on
         DimOverlay {
             GlassPanel {
                 Text(stringResource(R.string.so_close), style = Styles.gradient(34))
-                val pct = (host.deathProgress * 100).roundToInt()
-                Text(stringResource(R.string.percent_done, pct), style = Styles.plain(17, Palette.TextSecondary, FontWeight.Bold))
-                ProgressRing(host.deathProgress)
+                if (host.endless) {
+                    Text(stringResource(R.string.depth_x, host.depth), style = Styles.glow(40, Color.White, FontWeight.Black))
+                    if (host.newBest) NewBestBadge() else Text(stringResource(R.string.best_x, Progress.bestEndless), style = Styles.plain(16, Palette.TextSecondary, FontWeight.Bold))
+                    CoinsEarned(host.lastReward)
+                } else {
+                    val pct = (host.deathProgress * 100).roundToInt()
+                    Text(stringResource(R.string.percent_done, pct), style = Styles.plain(17, Palette.TextSecondary, FontWeight.Bold))
+                    ProgressRing(host.deathProgress)
+                }
                 if (!host.revived) {
                     if (ads.rewardedReady) {
                         PrimaryButton(stringResource(R.string.continue_video)) { ads.showRewarded { host.revive() } }
@@ -375,7 +472,11 @@ private fun WinOverlay(host: GameHost, ads: AdsManager, sound: SoundManager, onG
         DimOverlay {
             GlassPanel {
                 Text(
-                    if (host.daily) stringResource(R.string.daily_complete) else stringResource(R.string.level_complete),
+                    when {
+                        host.daily -> stringResource(R.string.daily_complete)
+                        host.boss -> stringResource(R.string.boss_beaten)
+                        else -> stringResource(R.string.level_complete)
+                    },
                     style = Styles.gradient(30),
                     textAlign = TextAlign.Center,
                 )

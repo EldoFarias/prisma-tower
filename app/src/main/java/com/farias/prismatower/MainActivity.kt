@@ -31,7 +31,7 @@ import com.farias.prismatower.ui.StatsScreen
 import com.farias.prismatower.ui.TowerView
 import com.farias.prismatower.ui.skipChestToday
 
-enum class Screen { SPLASH, HOME, GAME, SHOP, STATS }
+enum class Screen { SPLASH, HOME, GAME, SHOP, STATS, MAP }
 
 class MainActivity : ComponentActivity() {
 
@@ -54,6 +54,7 @@ class MainActivity : ComponentActivity() {
         // Build the player's next level (and a few for the menu demo) in the background right away.
         com.farias.prismatower.game.LevelCache.prefetch(Progress.level)
         for (n in listOf(5, 9, 14, 21)) com.farias.prismatower.game.LevelCache.prefetch(n)
+        com.farias.prismatower.game.LevelCache.prefetchEndless()
         host = GameHost(this)
         host.showMenu()
 
@@ -97,6 +98,13 @@ class MainActivity : ComponentActivity() {
                                 },
                                 onShop = { go(Screen.SHOP) },
                                 onStats = { go(Screen.STATS) },
+                                onMap = { go(Screen.MAP) },
+                                onEndless = {
+                                    ads.onNewGame {
+                                        host.playEndless()
+                                        go(Screen.GAME)
+                                    }
+                                },
                             )
                             Screen.GAME -> GameScreen(
                                 host = host,
@@ -106,6 +114,21 @@ class MainActivity : ComponentActivity() {
                                 onHome = { go(Screen.HOME) },
                             )
                             Screen.SHOP -> ShopScreen(host, ads, sound) { go(Screen.HOME) }
+                            Screen.MAP -> {
+                                androidx.compose.runtime.DisposableEffect(Unit) {
+                                    host.renderPaused = true
+                                    onDispose { host.renderPaused = false }
+                                }
+                                com.farias.prismatower.ui.MapScreen(
+                                    onBack = { go(Screen.HOME) },
+                                    onPlay = { n ->
+                                        ads.onNewGame {
+                                            host.play(n)
+                                            go(Screen.GAME)
+                                        }
+                                    },
+                                )
+                            }
                             Screen.STATS -> {
                                 // The statistics screen covers the 3D view completely: don't draw it.
                                 androidx.compose.runtime.DisposableEffect(Unit) {
@@ -142,6 +165,7 @@ class MainActivity : ComponentActivity() {
                 Screen.GAME
             }
             "shop" -> Screen.SHOP
+            "map" -> Screen.MAP
             "stats" -> Screen.STATS
             else -> Screen.HOME
         }

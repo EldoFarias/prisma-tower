@@ -82,6 +82,46 @@ object Progress {
 
     val isReady: Boolean get() = ::prefs.isInitialized
 
+    // Counters for achievements (all persisted as ints under their own key)
+    var bossesBeaten by mutableIntStateOf(0)
+        private set
+    var perfectLevels by mutableIntStateOf(0)
+        private set
+    var coinsCollected by mutableIntStateOf(0)
+        private set
+    var glassBroken by mutableIntStateOf(0)
+        private set
+    var portalsUsed by mutableIntStateOf(0)
+        private set
+    var bestEndless by mutableIntStateOf(0)
+        private set
+    var claimedAchievements by mutableStateOf(setOf<String>())
+        private set
+
+    // Trails (third shop tab)
+    var trailId by mutableStateOf("classic")
+        private set
+    var ownedTrails by mutableStateOf(setOf("classic"))
+        private set
+
+    // Try a skin for a few games (rewarded video)
+    var trialTower by mutableStateOf("")
+        private set
+    var trialBall by mutableStateOf("")
+        private set
+    var trialGames by mutableIntStateOf(0)
+        private set
+
+    // Daily roulette
+    var rouletteDay by mutableIntStateOf(0)
+        private set
+    var rouletteVideoSpins by mutableIntStateOf(0)
+        private set
+
+    // Mechanics already introduced ("new!" notice)
+    var seenMechanics by mutableStateOf(setOf<String>())
+        private set
+
     fun init(context: Context) {
         if (isReady) return
         prefs = context.applicationContext.getSharedPreferences(PREFS, Context.MODE_PRIVATE)
@@ -112,6 +152,21 @@ object Progress {
             .let { if (it.size == Missions.COUNT) it else List(Missions.COUNT) { 0 } }
         missionClaimed = (prefs.getString("mission_claimed", "") ?: "").split(",").map { it == "1" }
             .let { if (it.size == Missions.COUNT) it else List(Missions.COUNT) { false } }
+        bossesBeaten = prefs.getInt("bosses", 0)
+        perfectLevels = prefs.getInt("perfect_levels", 0)
+        coinsCollected = prefs.getInt("coins_collected", 0)
+        glassBroken = prefs.getInt("glass_broken", 0)
+        portalsUsed = prefs.getInt("portals_used", 0)
+        bestEndless = prefs.getInt("best_endless", 0)
+        claimedAchievements = prefs.getStringSet("achievements", emptySet())?.toSet() ?: emptySet()
+        trailId = prefs.getString("trail", "classic") ?: "classic"
+        ownedTrails = prefs.getStringSet("owned_trails", setOf("classic"))?.toSet() ?: setOf("classic")
+        trialTower = prefs.getString("trial_tower", "") ?: ""
+        trialBall = prefs.getString("trial_ball", "") ?: ""
+        trialGames = prefs.getInt("trial_games", 0)
+        rouletteDay = prefs.getInt("roulette_day", 0)
+        rouletteVideoSpins = prefs.getInt("roulette_video_spins", 0)
+        seenMechanics = prefs.getStringSet("seen_mechanics", emptySet())?.toSet() ?: emptySet()
         chestLastDay = prefs.getInt("chest_last_day", 0)
         chestRun = prefs.getInt("chest_run", 0)
         dailyLastDay = prefs.getInt("daily_last_day", 0)
@@ -214,6 +269,99 @@ object Progress {
     fun markReviewAsked(now: Long) {
         lastReviewAsk = now
         prefs.edit().putLong("last_review_ask", now).apply()
+    }
+
+    // ------------------------------------------------------------------ achievements & counters
+
+    fun addStats(bosses: Int = 0, perfect: Int = 0, coins: Int = 0, glass: Int = 0, portals: Int = 0) {
+        bossesBeaten += bosses
+        perfectLevels += perfect
+        coinsCollected += coins
+        glassBroken += glass
+        portalsUsed += portals
+        prefs.edit().putInt("bosses", bossesBeaten).putInt("perfect_levels", perfectLevels)
+            .putInt("coins_collected", coinsCollected).putInt("glass_broken", glassBroken)
+            .putInt("portals_used", portalsUsed).apply()
+    }
+
+    /** Returns true when [rings] is a new endless record. */
+    fun onEndless(rings: Int): Boolean {
+        if (rings <= bestEndless) return false
+        bestEndless = rings
+        prefs.edit().putInt("best_endless", rings).apply()
+        return true
+    }
+
+    fun claimAchievement(id: String, reward: Int): Boolean {
+        if (id in claimedAchievements) return false
+        claimedAchievements = claimedAchievements + id
+        prefs.edit().putStringSet("achievements", claimedAchievements).apply()
+        addCoins(reward)
+        return true
+    }
+
+    // ------------------------------------------------------------------ trails
+
+    fun ownsTrail(id: String) = id in ownedTrails
+
+    fun buyTrail(id: String, price: Int): Boolean {
+        if (ownsTrail(id)) return true
+        if (!spend(price)) return false
+        giveTrail(id)
+        return true
+    }
+
+    fun giveTrail(id: String) {
+        ownedTrails = ownedTrails + id
+        prefs.edit().putStringSet("owned_trails", ownedTrails).apply()
+    }
+
+    fun selectTrail(id: String) {
+        if (!ownsTrail(id)) return
+        trailId = id
+        prefs.edit().putString("trail", id).apply()
+    }
+
+    // ------------------------------------------------------------------ skin trial
+
+    fun startTrial(tower: String, ball: String, games: Int) {
+        trialTower = tower
+        trialBall = ball
+        trialGames = games
+        prefs.edit().putString("trial_tower", tower).putString("trial_ball", ball).putInt("trial_games", games).apply()
+    }
+
+    /** Called when a level starts: uses up one trial game. */
+    fun useTrialGame() {
+        if (trialGames <= 0) return
+        trialGames -= 1
+        if (trialGames == 0) { trialTower = ""; trialBall = "" }
+        prefs.edit().putString("trial_tower", trialTower).putString("trial_ball", trialBall).putInt("trial_games", trialGames).apply()
+    }
+
+    // ------------------------------------------------------------------ roulette
+
+    const val ROULETTE_VIDEO_SPINS = 3
+
+    fun rouletteFreeAvailable(): Boolean = rouletteDay != today()
+
+    fun rouletteVideoLeft(): Int = if (rouletteDay == today()) (ROULETTE_VIDEO_SPINS - rouletteVideoSpins).coerceAtLeast(0) else ROULETTE_VIDEO_SPINS
+
+    /** Marks a spin as used ([video] = paid with a rewarded video). */
+    fun useRouletteSpin(video: Boolean) {
+        if (rouletteDay != today()) {
+            rouletteDay = today()
+            rouletteVideoSpins = 0
+        }
+        if (video) rouletteVideoSpins += 1
+        prefs.edit().putInt("roulette_day", rouletteDay).putInt("roulette_video_spins", rouletteVideoSpins).apply()
+    }
+
+    // ------------------------------------------------------------------ mechanics
+
+    fun markMechanicSeen(name: String) {
+        seenMechanics = seenMechanics + name
+        prefs.edit().putStringSet("seen_mechanics", seenMechanics).apply()
     }
 
     // ------------------------------------------------------------------ towers and balls

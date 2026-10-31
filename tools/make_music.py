@@ -1,18 +1,23 @@
-"""Composes a calm, seamless lo-fi loop for Prisma Blocks (original, procedurally synthesized)."""
+"""Composes seamless background loops for Prisma Tower (original, procedurally synthesized).
+
+python3 tools/make_music.py <out.ogg> [chill|sunny|epic|space]
+"""
 import sys, wave, subprocess, os
 import numpy as np
 
 OUT = sys.argv[1]
+STYLE = sys.argv[2] if len(sys.argv) > 2 else "chill"
 SR = 44100
-BPM = 76
+PRESETS = {
+    # bpm, chords (pad voicing, bass root), arp pattern, arp speed (notes per beat), hats, kick, echo, pad brightness
+    "chill": (76, [([53, 57, 60, 64], 41), ([52, 55, 59, 62], 40), ([50, 53, 57, 60], 38), ([48, 52, 55, 59], 36)], [0, 1, 2, 3, 2, 1, 2, 3], 2, True, False, 0.22, 0.18),
+    "sunny": (104, [([60, 64, 67, 72], 48), ([55, 59, 62, 67], 43), ([57, 60, 64, 69], 45), ([53, 57, 60, 65], 41)], [0, 2, 1, 3, 0, 2, 3, 2], 2, True, True, 0.18, 0.3),
+    "epic": (92, [([57, 60, 64, 69], 45), ([53, 57, 60, 65], 41), ([48, 52, 55, 60], 36), ([55, 59, 62, 67], 43)], [0, 1, 2, 3, 3, 2, 1, 2], 4, True, True, 0.2, 0.45),
+    "space": (68, [([50, 54, 57, 61], 38), ([47, 50, 54, 57], 35), ([43, 47, 50, 54], 31), ([45, 49, 52, 57], 33)], [0, 2, 3, 1, 3, 2, 0, 3], 2, False, False, 0.42, 0.12),
+}
+BPM, CHORDS, PATTERN, ARP_RATE, HATS, KICK, ECHO, BRIGHT = PRESETS[STYLE]
 BEAT = 60 / BPM
 BAR = 4 * BEAT
-CHORDS = [  # (pad voicing midi, bass root midi), 2 bars each
-    ([53, 57, 60, 64], 41),  # Fmaj7
-    ([52, 55, 59, 62], 40),  # Em7
-    ([50, 53, 57, 60], 38),  # Dm7
-    ([48, 52, 55, 59], 36),  # Cmaj7
-]
 BARS_PER_CHORD = 2
 LOOP = len(CHORDS) * BARS_PER_CHORD * BAR
 TAIL = 4.0
@@ -71,7 +76,7 @@ for ci, (voicing, root) in enumerate(CHORDS):
         for det in (-0.12, 0.0, 0.12):
             ff = f * 2 ** (det / 12)
             ph = 2 * np.pi * ff * t + rng.random() * 6.28
-            chord += np.sin(ph) + 0.18 * np.sin(2 * ph) + 0.06 * np.sin(3 * ph)
+            chord += np.sin(ph) + BRIGHT * np.sin(2 * ph) + BRIGHT * 0.4 * np.sin(3 * ph)
     trem = 1 + 0.05 * np.sin(2 * np.pi * 0.25 * t)
     add(pad, start, chord * env * trem)
 
@@ -86,12 +91,12 @@ for ci, (voicing, root) in enumerate(CHORDS):
 
     # Arpeggio: bell-like plucks, gentle up-down pattern in 8th notes, an octave up
     tones = [m + 12 for m in voicing]
-    pattern = [0, 1, 2, 3, 2, 1, 2, 3]
+    pattern = PATTERN * (ARP_RATE // 2)
     for b in range(BARS_PER_CHORD):
         for k, p in enumerate(pattern):
-            if (b == 1 and k in (6, 7)):
+            if (b == 1 and k >= len(pattern) - 2):
                 continue  # breathing space at the end of each chord
-            when = start + b * BAR + k * BEAT / 2 + rng.normal(0, 0.006)
+            when = start + b * BAR + k * BEAT / ARP_RATE + rng.normal(0, 0.006)
             f = hz(tones[p])
             n = int(SR * 1.4)
             t = np.arange(n) / SR
@@ -101,8 +106,17 @@ for ci, (voicing, root) in enumerate(CHORDS):
             vel = 0.75 + 0.25 * rng.random()
             add(arp, when, tone * env * vel)
 
+    # Kick on 1 and 3 (sunny, epic)
+    if KICK:
+        for b in range(BARS_PER_CHORD):
+            for k in (0, 2):
+                n = int(SR * 0.3)
+                t = np.arange(n) / SR
+                f = 110 * np.exp(-t * 18) + 45
+                ph = 2 * np.pi * np.cumsum(f) / SR
+                add(bass, start + b * BAR + k * BEAT, np.sin(ph) * np.exp(-t * 9) * 1.4)
     # Soft shaker on off-beats
-    for b in range(BARS_PER_CHORD):
+    for b in range(BARS_PER_CHORD if HATS else 0):
         for k in range(4):
             when = start + b * BAR + k * BEAT + BEAT / 2
             n = int(SR * 0.09)
@@ -118,12 +132,12 @@ def smooth(x, k):
 
 pad = smooth(pad, 9)
 mix = 0.20 * pad / np.max(np.abs(pad)) + 0.30 * bass / np.max(np.abs(bass)) \
-    + 0.28 * arp / np.max(np.abs(arp)) + 0.05 * hats / np.max(np.abs(hats))
+    + 0.28 * arp / np.max(np.abs(arp)) + 0.05 * hats / max(1e-9, np.max(np.abs(hats)))
 
 # Simple echo for the arp/pad space
 delay = int(SR * BEAT * 0.75)
 echo = np.zeros_like(mix)
-echo[delay:] = mix[:-delay] * 0.22
+echo[delay:] = mix[:-delay] * ECHO
 mix = mix + echo
 
 # Make it loop seamlessly: fold the tail back onto the start
@@ -133,7 +147,7 @@ tail = mix[L:]
 loop[: len(tail)] += tail
 loop = loop / np.max(np.abs(loop)) * 0.85
 
-wav_path = os.path.join(os.path.dirname(OUT), "_music.wav")
+wav_path = os.path.join(os.path.dirname(OUT), "_music_%s.wav" % STYLE)
 with wave.open(wav_path, "wb") as w:
     w.setnchannels(1)
     w.setsampwidth(2)

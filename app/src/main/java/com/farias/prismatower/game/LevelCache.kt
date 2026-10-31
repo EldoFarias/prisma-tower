@@ -24,6 +24,28 @@ object LevelCache {
 
     fun daily(day: Int): TowerLevel = get(-day, 7L) { TowerLevels.daily(day) }
 
+    // Endless towers are long to build: always keep the next one ready.
+    @Volatile private var nextEndless: TowerLevel? = null
+    @Volatile private var buildingEndless = false
+
+    fun prefetchEndless() {
+        synchronized(this) {
+            if (nextEndless != null || buildingEndless) return
+            buildingEndless = true
+        }
+        worker.execute {
+            val lv = TowerLevels.endless(System.nanoTime())
+            synchronized(this) { nextEndless = lv; buildingEndless = false }
+        }
+    }
+
+    /** A fresh endless tower (ready one if prefetched), and starts building the next. */
+    fun endless(): TowerLevel {
+        val lv = synchronized(this) { nextEndless.also { nextEndless = null } } ?: TowerLevels.endless(System.nanoTime())
+        prefetchEndless()
+        return lv
+    }
+
     /** Builds a level in the background if it isn't ready yet. */
     fun prefetch(n: Int) {
         val k = key(n, 0L)

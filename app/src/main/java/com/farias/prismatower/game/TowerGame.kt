@@ -37,6 +37,8 @@ class TowerGame(private val callbacks: Callbacks) {
         private set
     var tower: TowerLook = Looks.towers[0]
     var ball: BallLook = Looks.balls[0]
+    /** Trail style ([com.farias.prismatower.data.Trails]). */
+    var trailStyle = 0
     var paused = false
 
     /** Seconds since the game object started (drives shader animations). */
@@ -93,9 +95,23 @@ class TowerGame(private val callbacks: Callbacks) {
         LevelCache.prefetch(3 + rnd.nextInt(30))
     }
 
-    fun startPlay(level: TowerLevel) {
+    fun startPlay(level: TowerLevel, shields: Int = 0) {
         mode = Mode.PLAY
         begin(level)
+        sim.shields = shields
+    }
+
+    /** Slow motion after a near miss: until this clock time, the game runs at [SLOW_SCALE]. */
+    private var slowUntil = -1f
+    private var lastSlow = -10f
+    /** 0..1, how much slow motion is on (the renderer can use it for a vignette). */
+    var slowMo = 0f
+        private set
+
+    private fun nearMiss() {
+        if (mode != Mode.PLAY || clock - lastSlow < 4f) return
+        lastSlow = clock
+        slowUntil = clock + 0.55f
     }
 
     private fun begin(level: TowerLevel) {
@@ -129,8 +145,11 @@ class TowerGame(private val callbacks: Callbacks) {
     // ------------------------------------------------------------------ frame
 
     fun update(dtRaw: Float) {
-        val dt = dtRaw.coerceIn(0f, 1f / 20f)
-        clock += dt
+        val real = dtRaw.coerceIn(0f, 1f / 20f)
+        clock += real
+        val slowTarget = if (clock < slowUntil) 1f else 0f
+        slowMo += (slowTarget - slowMo) * min(1f, real * 14f)
+        val dt = real * (1f - slowMo * (1f - SLOW_SCALE))
         val turn = synchronized(inputLock) { val t = pendingTurn; pendingTurn = 0f; t }
         if (paused) return
         if (mode == Mode.PLAY) {
@@ -165,7 +184,7 @@ class TowerGame(private val callbacks: Callbacks) {
         trailHead = (trailHead + 1) % TRAIL
         if (trailCount < TRAIL) trailCount++
         updateBallScale()
-        if (sim.onFire && !sim.dead) emitFire()
+        if (sim.onFire && !sim.dead) emitFire() else if (!sim.dead) emitTrail()
         emitAmbient(dt)
         particles.update(dt)
         for (i in splats.indices.reversed()) {
@@ -181,11 +200,14 @@ class TowerGame(private val callbacks: Callbacks) {
             when (e) {
                 is TowerEvent.Bounce -> {
                     sinceBounce = 0f
+                    if (e.near) nearMiss()
+                    if (e.cracked) splash(Tower.platformTop(e.platform), floatArrayOf(0.85f, 0.95f, 1f), 14, 3f)
                     if (splats.size > 28) splats.removeAt(0)
                     splats.add(Splat(e.platform, e.localAngle, clock, ball.trail, rnd.nextFloat() * 6.28f, rnd.nextFloat() * 6.28f))
                     splash(Tower.platformTop(e.platform), ball.trail, 10, 3.5f)
                 }
                 is TowerEvent.Pass -> {
+                    if (e.near) nearMiss()
                     breaks.add(Break(e.platform, clock, sim.ringRotation(e.platform), false))
                     burstRing(e.platform, 14 + e.combo * 4, false)
                 }
@@ -204,6 +226,22 @@ class TowerGame(private val callbacks: Callbacks) {
                     confetti()
                 }
                 TowerEvent.FireOn -> splash(sim.ballY, floatArrayOf(1f, 0.55f, 0.1f), 24, 5f)
+                is TowerEvent.GlassBreak -> {
+                    splash(Tower.platformTop(e.platform), floatArrayOf(0.8f, 0.95f, 1f), 36, 6f)
+                    shake = maxOf(shake, 0.15f)
+                }
+                is TowerEvent.Portal -> {
+                    for (k in 0..1) breaks.add(Break(e.platform + k, clock, sim.ringRotation(minOf(e.platform + k, sim.level.platforms.size - 1)), false))
+                    splash(sim.ballY, floatArrayOf(0.75f, 0.35f, 1f), 50, 6f)
+                    burstRing(e.platform, 30, false)
+                }
+                is TowerEvent.Coin -> splash(sim.ballY + 0.4f, floatArrayOf(1f, 0.85f, 0.25f), 22, 4f)
+                is TowerEvent.Shield -> {
+                    breaks.add(Break(e.platform, clock, sim.ringRotation(e.platform), true))
+                    burstRing(e.platform, 50, true)
+                    splash(sim.ballY, floatArrayOf(0.35f, 0.75f, 1f), 40, 6f)
+                    shake = 0.4f
+                }
             }
             callbacks.onEvent(e, this)
         }
@@ -257,6 +295,56 @@ class TowerGame(private val callbacks: Callbacks) {
             )
         }
     }
+
+    private var trailAcc = 0f
+
+    /** Extra particles for the fancy trails (stars, blue fire, gold dust). */
+    private fun emitTrail() {
+        val rate = when (trailStyle) {
+            com.farias.prismatower.data.Trails.STARS -> 30f
+            com.farias.prismatower.data.Trails.BLUE_FIRE -> 70f
+            com.farias.prismatower.data.Trails.GOLD -> 40f
+            com.farias.prismatower.data.Trails.RAINBOW -> 25f
+            else -> 0f
+        }
+        if (rate == 0f) return
+        trailAcc += rate / 60f
+        while (trailAcc >= 1f) {
+            trailAcc -= 1f
+            val a = rnd.nextFloat() * 6.283f
+            val rr = Tower.BALL_R * 0.8f * rnd.nextFloat()
+            when (trailStyle) {
+                com.farias.prismatower.data.Trails.STARS -> particles.add(
+                    ballX() + rr * cos(a), sim.ballY, ballZ() + rr * sin(a), (rnd.nextFloat() - 0.5f) * 1.5f, 1f, (rnd.nextFloat() - 0.5f) * 1.5f,
+                    1f, 1f, 0.85f + 0.15f * rnd.nextFloat(), 1f, 0.06f + rnd.nextFloat() * 0.06f, 0.6f + rnd.nextFloat() * 0.4f, gravity = 2f,
+                )
+                com.farias.prismatower.data.Trails.BLUE_FIRE -> {
+                    val hot = rnd.nextFloat()
+                    particles.add(
+                        ballX() + rr * cos(a), sim.ballY + rnd.nextFloat() * 0.2f, ballZ() + rr * sin(a),
+                        (rnd.nextFloat() - 0.5f) * 1.2f, 2.5f + rnd.nextFloat() * 2f, (rnd.nextFloat() - 0.5f) * 1.2f,
+                        0.15f + 0.4f * hot, 0.5f + 0.4f * hot, 1f, 1f, 0.18f + rnd.nextFloat() * 0.14f, 0.3f + rnd.nextFloat() * 0.2f, gravity = -3f,
+                    )
+                }
+                com.farias.prismatower.data.Trails.GOLD -> particles.add(
+                    ballX() + rr * cos(a), sim.ballY, ballZ() + rr * sin(a), (rnd.nextFloat() - 0.5f) * 0.8f, 0.5f, (rnd.nextFloat() - 0.5f) * 0.8f,
+                    1f, 0.78f + 0.2f * rnd.nextFloat(), 0.25f, 1f, 0.05f + rnd.nextFloat() * 0.05f, 0.8f, gravity = 3f,
+                )
+                else -> {
+                    val h = (clock * 0.5f + rnd.nextFloat() * 0.2f) % 1f
+                    particles.add(
+                        ballX() + rr * cos(a), sim.ballY, ballZ() + rr * sin(a), (rnd.nextFloat() - 0.5f), 0.6f, (rnd.nextFloat() - 0.5f),
+                        hueR(h), hueG(h), hueB(h), 1f, 0.07f + rnd.nextFloat() * 0.05f, 0.6f, gravity = 2f,
+                    )
+                }
+            }
+        }
+    }
+
+    private fun hueC(h: Float, off: Float) = (kotlin.math.abs(((h * 6f + off) % 6f) - 3f) - 1f).coerceIn(0f, 1f)
+    fun hueR(h: Float) = hueC(h, 0f)
+    fun hueG(h: Float) = hueC(h, 4f)
+    fun hueB(h: Float) = hueC(h, 2f)
 
     private var ambientAcc = 0f
     /** Air particles (part of the detailed scenery). */
@@ -324,6 +412,7 @@ class TowerGame(private val callbacks: Callbacks) {
     }
 
     companion object {
+        const val SLOW_SCALE = 0.3f
         const val TRAIL = 14
         val TWO_PI = (2 * PI).toFloat()
     }

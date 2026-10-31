@@ -12,6 +12,28 @@ object MusicPlayer {
     private var player: MediaPlayer? = null
     private var appContext: Context? = null
     private var foreground = false
+    private var track = R.raw.music_chill
+    private var playing = 0
+
+    /** Music that suits each tower look (boss towers always get the epic one). */
+    fun trackFor(towerId: String, boss: Boolean = false): Int = when {
+        boss -> R.raw.music_epic
+        towerId in setOf("ocean", "candy", "jungle", "desert") -> R.raw.music_sunny
+        towerId in setOf("lava", "gold", "castle") -> R.raw.music_epic
+        towerId in setOf("galaxy", "ice", "cyber", "aurora") -> R.raw.music_space
+        else -> R.raw.music_chill
+    }
+
+    /** Switches to [res] (keeps playing if it's already the current one). */
+    fun select(res: Int) {
+        if (res == track) return
+        track = res
+        if (player != null) {
+            player?.release()
+            player = null
+        }
+        update()
+    }
 
     fun init(context: Context) {
         appContext = context.applicationContext
@@ -34,7 +56,11 @@ object MusicPlayer {
             player?.takeIf { it.isPlaying }?.pause()
             return
         }
-        val p = player ?: create() ?: return
+        val p = player?.takeIf { playing == track } ?: run {
+            player?.release()
+            player = null
+            create()
+        } ?: return
         if (!p.isPlaying) p.start()
     }
 
@@ -43,7 +69,7 @@ object MusicPlayer {
         return try {
             MediaPlayer.create(
                 ctx,
-                R.raw.music_chill,
+                track,
                 AudioAttributes.Builder()
                     .setUsage(AudioAttributes.USAGE_GAME)
                     .setContentType(AudioAttributes.CONTENT_TYPE_MUSIC)
@@ -52,7 +78,7 @@ object MusicPlayer {
             )?.apply {
                 isLooping = true
                 setVolume(VOLUME, VOLUME)
-            }.also { player = it }
+            }.also { player = it; playing = track }
         } catch (e: Exception) {
             null
         }

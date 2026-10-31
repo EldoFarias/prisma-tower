@@ -19,6 +19,7 @@ import com.farias.prismatower.ads.AdsManager
 import com.farias.prismatower.gl.Rarity
 import com.farias.prismatower.gl.Scene
 import com.farias.prismatower.gl.rarityOf
+import com.farias.prismatower.data.Trails
 import androidx.compose.foundation.Canvas
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
@@ -88,10 +89,11 @@ fun ShopScreen(host: GameHost, ads: AdsManager, sound: SoundManager, onBack: () 
     var tab by remember { mutableIntStateOf(0) }
     var towerSel by remember { mutableStateOf(Progress.towerId) }
     var ballSel by remember { mutableStateOf(Progress.ballId) }
+    var trailSel by remember { mutableStateOf(Progress.trailId) }
     var reveal by remember { mutableStateOf<Pair<Boolean, String>?>(null) }
     val context = LocalContext.current
     DisposableEffect(Unit) { onDispose { host.applyLooks() } }
-    fun preview() = host.applyLooks(towerSel, ballSel)
+    fun preview() = host.applyLooks(towerSel, ballSel, trailSel)
     BackHandler(onBack = onBack)
 
     // The shop slides up and covers the whole screen; only a framed window shows the live 3D preview.
@@ -161,10 +163,11 @@ fun ShopScreen(host: GameHost, ads: AdsManager, sound: SoundManager, onBack: () 
                 Row(horizontalArrangement = Arrangement.spacedBy(10.dp)) {
                     TabChip(stringResource(R.string.towers), tab == 0, Modifier.weight(1f)) { tab = 0 }
                     TabChip(stringResource(R.string.balls), tab == 1, Modifier.weight(1f)) { tab = 1 }
+                    TabChip(stringResource(R.string.trails), tab == 2, Modifier.weight(1f)) { tab = 2 }
                 }
                 val locked = if (tab == 0) Looks.towers.filter { !Progress.ownsTower(it.id) }.map { it.id }
                 else Looks.balls.filter { !Progress.ownsBall(it.id) }.map { it.id }
-                if (locked.isNotEmpty()) {
+                if (locked.isNotEmpty() && tab != 2) {
                     MysteryButton(MYSTERY_PRICE, Progress.coins >= MYSTERY_PRICE) {
                         if (!Progress.spend(MYSTERY_PRICE)) { sound.play(Sfx.INVALID); return@MysteryButton }
                         val id = locked.random()
@@ -198,6 +201,20 @@ fun ShopScreen(host: GameHost, ads: AdsManager, sound: SoundManager, onBack: () 
                                 repeat(3 - row.size) { Spacer(Modifier.weight(1f)) }
                             }
                         }
+                    } else if (tab == 2) {
+                        Trails.all.chunked(3).forEach { row ->
+                            Row(horizontalArrangement = Arrangement.spacedBy(10.dp)) {
+                                row.forEach { tr ->
+                                    ItemCard(
+                                        name = stringResource(tr.nameRes), price = tr.price, rarity = rarityOf(tr.price),
+                                        owned = Progress.ownsTrail(tr.id), inUse = Progress.trailId == tr.id,
+                                        selected = trailSel == tr.id, modifier = Modifier.weight(1f),
+                                        onClick = { trailSel = tr.id; preview(); sound.play(Sfx.PICK, 0.6f) },
+                                    ) { TrailThumb(tr.style, Looks.ball(ballSel)) }
+                                }
+                                repeat(3 - row.size) { Spacer(Modifier.weight(1f)) }
+                            }
+                        }
                     } else {
                         Looks.balls.chunked(3).forEach { row ->
                             Row(horizontalArrangement = Arrangement.spacedBy(10.dp)) {
@@ -214,21 +231,47 @@ fun ShopScreen(host: GameHost, ads: AdsManager, sound: SoundManager, onBack: () 
                         }
                     }
                 }
-                // Action for the item being previewed.
-                if (tab == 0) {
-                    val t = Looks.tower(towerSel)
-                    ActionButton(Progress.ownsTower(t.id), Progress.towerId == t.id, t.price,
-                        onBuy = {
-                            if (Progress.buyTower(t.id, t.price)) { Progress.selectTower(t.id); sound.play(Sfx.COIN) } else sound.play(Sfx.INVALID)
-                        },
-                        onUse = { Progress.selectTower(t.id); sound.play(Sfx.PLACE) })
-                } else {
-                    val b = Looks.ball(ballSel)
-                    ActionButton(Progress.ownsBall(b.id), Progress.ballId == b.id, b.price,
-                        onBuy = {
-                            if (Progress.buyBall(b.id, b.price)) { Progress.selectBall(b.id); sound.play(Sfx.COIN) } else sound.play(Sfx.INVALID)
-                        },
-                        onUse = { Progress.selectBall(b.id); sound.play(Sfx.PLACE) })
+                // Action for the item being previewed (+ "try it" with a video for locked skins).
+                Row(verticalAlignment = Alignment.CenterVertically) {
+                    Box(Modifier.weight(1f)) {
+                        when (tab) {
+                            0 -> {
+                                val t = Looks.tower(towerSel)
+                                ActionButton(Progress.ownsTower(t.id), Progress.towerId == t.id, t.price,
+                                    onBuy = {
+                                        if (Progress.buyTower(t.id, t.price)) { Progress.selectTower(t.id); sound.play(Sfx.COIN) } else sound.play(Sfx.INVALID)
+                                    },
+                                    onUse = { Progress.selectTower(t.id); sound.play(Sfx.PLACE) })
+                            }
+                            1 -> {
+                                val b = Looks.ball(ballSel)
+                                ActionButton(Progress.ownsBall(b.id), Progress.ballId == b.id, b.price,
+                                    onBuy = {
+                                        if (Progress.buyBall(b.id, b.price)) { Progress.selectBall(b.id); sound.play(Sfx.COIN) } else sound.play(Sfx.INVALID)
+                                    },
+                                    onUse = { Progress.selectBall(b.id); sound.play(Sfx.PLACE) })
+                            }
+                            else -> {
+                                val tr = Trails.byId(trailSel)
+                                ActionButton(Progress.ownsTrail(tr.id), Progress.trailId == tr.id, tr.price,
+                                    onBuy = {
+                                        if (Progress.buyTrail(tr.id, tr.price)) { Progress.selectTrail(tr.id); sound.play(Sfx.COIN) } else sound.play(Sfx.INVALID)
+                                    },
+                                    onUse = { Progress.selectTrail(tr.id); sound.play(Sfx.PLACE) })
+                            }
+                        }
+                    }
+                    val lockedSel = (tab == 0 && !Progress.ownsTower(towerSel)) || (tab == 1 && !Progress.ownsBall(ballSel))
+                    if (lockedSel && ads.rewardedReady) {
+                        Spacer(Modifier.width(10.dp))
+                        TryButton {
+                            ads.showRewarded {
+                                if (tab == 0) Progress.startTrial(towerSel, "", TRIAL_GAMES) else Progress.startTrial("", ballSel, TRIAL_GAMES)
+                                sound.play(Sfx.RECORD)
+                                Toast.makeText(context, context.getString(R.string.trial_started, TRIAL_GAMES), Toast.LENGTH_LONG).show()
+                            }
+                        }
+                    }
                 }
             }
         }
@@ -237,6 +280,61 @@ fun ShopScreen(host: GameHost, ads: AdsManager, sound: SoundManager, onBack: () 
 }
 
 const val MYSTERY_PRICE = 750
+const val TRIAL_GAMES = 3
+
+@Composable
+private fun TryButton(onClick: () -> Unit) {
+    val shape = RoundedCornerShape(20.dp)
+    Column(
+        Modifier
+            .height(58.dp)
+            .clip(shape)
+            .background(Brush.verticalGradient(listOf(Color(0xFF0EA5E9), Color(0xFF6366F1))))
+            .border(1.dp, Color.White.copy(alpha = 0.35f), shape)
+            .clickable(onClick = onClick)
+            .padding(horizontal = 14.dp),
+        horizontalAlignment = Alignment.CenterHorizontally,
+        verticalArrangement = Arrangement.Center,
+    ) {
+        Text("▶", style = Styles.plain(14, Color.White, FontWeight.Black))
+        Text(stringResource(R.string.try_skin), style = Styles.plain(13, Color.White, FontWeight.ExtraBold))
+    }
+}
+
+/** A short comet in the trail's style. */
+@Composable
+fun TrailThumb(style: Int, ball: BallLook) {
+    Canvas(Modifier.fillMaxSize(0.85f)) {
+        val w = size.width
+        val h = size.height
+        if (w < 2f) return@Canvas
+        val r = w * 0.14f
+        val bx = w * 0.5f
+        val by = h * 0.78f
+        for (k in 0 until 9) {
+            val f = k / 9f
+            val y = by - (1f - f) * h * 0.62f
+            val col = when (style) {
+                Trails.RAINBOW -> Color.hsv((k * 40f) % 360f, 0.8f, 1f)
+                Trails.BLUE_FIRE -> Color(0xFF4D9BFF)
+                Trails.GOLD -> Color(0xFFFFD34D)
+                Trails.GHOST -> Color.White
+                else -> col(ball.trail)
+            }
+            val a = (if (style == Trails.GHOST) 0.25f else if (style == Trails.NEON) 0.8f else 0.5f) * f
+            val rr = r * (0.4f + 0.8f * f) * (if (style == Trails.NEON || style == Trails.GHOST) 1.3f else 1f)
+            drawCircle(col.copy(alpha = a), rr, Offset(bx, y))
+        }
+        if (style == Trails.STARS || style == Trails.GOLD) {
+            for (k in 0 until 7) {
+                val x = bx + ((k * 37) % 11 - 5) * w * 0.04f
+                val y = by - ((k * 53) % 9) * h * 0.07f
+                drawCircle(if (style == Trails.GOLD) Color(0xFFFFE680) else Color.White, w * 0.018f, Offset(x, y))
+            }
+        }
+        drawCircle(Brush.radialGradient(listOf(Color.White, col(ball.c1)), Offset(bx - r * 0.3f, by - r * 0.3f), r * 1.4f), r, Offset(bx, by))
+    }
+}
 
 @Composable
 private fun MysteryButton(price: Int, enabled: Boolean, onClick: () -> Unit) {

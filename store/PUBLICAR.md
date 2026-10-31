@@ -9,15 +9,30 @@ Roteiro do Play Console com as respostas que valem para este app. Tudo que é te
 | AAB assinado (release, IDs reais do AdMob) | GitHub Actions → *Build Android* → artefato `PrismaTower-release-aab` (`gh workflow run android.yml`) |
 | Ícone 512x512 | `store/icon-512.png` |
 | Gráfico de destaque 1024x500 | `store/feature-graphic-1024x500.png` |
-| Capturas de tela (5 por idioma, 1080x1920, com legenda) | `python3 store/make_screenshots.py <pasta com os phone-*.png da release telas>` → `store/screenshots/<idioma>/` (fora do git) |
+| Capturas de tela | O Eldo tira no celular (mín. 2, ideal 5–8): jogo com a bola em fogo, torre chefe, Queda livre, loja, mapa, roleta. Legendas sugeridas em `store/listings.py` (`captions`) |
 | Nome, descrição curta e completa (8 idiomas) | `store/listings/<idioma>/` |
 | Política de privacidade | https://eldofarias.github.io/prisma-tower/privacy.html |
 | app-ads.txt | https://eldofarias.github.io/app-ads.txt |
-| Chave de upload | *(último passo, ainda a fazer)* pasta `PrismaTower-Keystore` guardada pelo Eldo (alias `upload`) |
+| Chave de upload | Gerar no PC (passo 0 abaixo) e guardar em `Desktop/eldo/PrismaTower-Keystore` |
 
 **Política de privacidade:** o arquivo está em `docs/privacy.html`. Para ela ficar no ar, ative uma vez:
 GitHub → repositório **prisma-tower** → *Settings → Pages* → *Source: Deploy from a branch* → Branch **main**, pasta **/docs** → Save.
 Em 1–2 minutos o link acima abre.
+
+## 0. Antes de tudo (no PC)
+
+**Chave de assinatura** (uma vez só; guarde a pasta, sem ela não dá para atualizar o app):
+```bash
+keytool -genkeypair -v -keystore upload.jks -alias upload -keyalg RSA -keysize 2048 -validity 10000
+base64 -w0 upload.jks > upload.jks.b64     # no Windows: certutil -encode upload.jks upload.jks.b64
+```
+GitHub → prisma-tower → *Settings → Secrets and variables → Actions* → criar:
+`KEYSTORE_BASE64` (conteúdo do .b64), `KEYSTORE_PASSWORD`, `KEY_ALIAS` (= upload), `KEY_PASSWORD`.
+
+**AdMob:** Apps → Adicionar app → Android → "Ainda não está publicado" → nome **Prisma Tower**.
+Crie 3 blocos: **Banner**, **Intersticial**, **Premiado**. Depois crie os secrets
+`ADMOB_APP_ID` (`ca-app-pub-…~…`), `ADMOB_BANNER_ID`, `ADMOB_INTERSTITIAL_ID`, `ADMOB_REWARDED_ID` (`ca-app-pub-…/…`).
+Em *Privacidade e mensagens → GDPR*, inclua o app na mensagem de consentimento e publique.
 
 ## 1. Criar o app
 
@@ -40,7 +55,7 @@ Play Console → **Criar app**
 **Classificação do conteúdo** (questionário IARC)
 - E-mail: eldofarias81@gmail.com · Categoria: **Jogo**
 - Violência, medo, sexo, linguagem, drogas, apostas/jogos de azar simulados: **Não** em tudo
-  (baús e recompensas dão moedas do jogo, não há aposta nem compra).
+  (baú, roleta da sorte e prêmio surpresa só dão moedas/skins do jogo; não há aposta, dinheiro nem compra).
 - Interação entre usuários / compartilha localização / compras digitais: **Não**
 - Resultado esperado: **Livre / PEGI 3 / Everyone**.
 
@@ -70,14 +85,14 @@ Play Console → **Criar app**
 
 ## 3. Presença na loja
 
-**Categoria:** Jogo → **Quebra-cabeça** · Tags: Quebra-cabeça, Blocos, Casual, Lógica, Offline
+**Categoria:** Jogo → **Casual** · Tags: Casual, Arcade, Ação, 3D, Offline
 **Contato:** e-mail eldofarias81@gmail.com · site **https://eldofarias.github.io** (necessário para o app-ads.txt)
 
 **Página principal da loja** (idioma padrão pt-BR, depois *Gerenciar traduções → Adicionar tradução própria*
 para en-US, es-ES, fr-FR, de-DE, tr-TR, id, hi-IN):
 - Nome do app, descrição curta e completa: copiar de `store/listings/<idioma>/`
 - Ícone: `store/icon-512.png` · Gráfico de destaque: `store/feature-graphic-1024x500.png`
-- Capturas de tela do telefone: `store/screenshots/<idioma>/` (as 5, na ordem 1 → 5; o Console embaralha ao enviar, arraste para reordenar)
+- Capturas de tela do telefone: os prints do celular (a mesma série serve para todos os idiomas)
 - Tablet: pode usar as mesmas capturas (opcional).
 
 ## 4. Países e preço
@@ -103,8 +118,8 @@ O `versionCode` é o número do build no GitHub, então cada novo envio precisa 
 
 Notas da versão sugeridas (pt-BR):
 ```
-Primeira versão do Prisma Tower! Deslize os blocos de gelatina até a porta da mesma cor: fases infinitas,
-mundos, desafio diário, missões, 4 poderes e 6 temas.
+Primeira versão do Prisma Tower! Gire a torre, quebre anéis pegando fogo, vença torres chefe, desça na
+Queda livre e colecione 13 torres, 23 bolas e 7 rastros. Desafio diário, roleta, missões e conquistas.
 ```
 
 ## 7. Depois de publicar

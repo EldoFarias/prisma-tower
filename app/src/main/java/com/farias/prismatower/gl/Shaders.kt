@@ -200,6 +200,21 @@ void main() {
             emis += uColor * (0.55 + 0.25 * st) * pulse;
             gloss = 90.0;
         }
+        if (uKind == 7) {
+            // Portal: a violet whirlpool.
+            float sw = sin(vUv.x * 9.0 + r * 5.0 - uTime * 7.0) * 0.5 + 0.5;
+            float core = ss(2.4, 1.5, r) * 0.6 + 0.4;
+            base = vec3(0.12, 0.04, 0.22);
+            emis += mix(vec3(0.45, 0.15, 1.0), vec3(0.2, 0.9, 1.0), sw) * (0.5 + 0.7 * sw) * core;
+            gloss = 120.0;
+        }
+        if (uKind == 8) {
+            // Glass: icy, very shiny, bright edges.
+            float edge = max(ss(0.12, 0.0, vUv.x), ss(0.88, 1.0, vUv.x));
+            emis += vec3(0.5, 0.75, 1.0) * (0.15 + 0.6 * edge);
+            gloss = 180.0;
+            metal = 0.3;
+        }
         if (uKind == 5) {
             float sh = pow(0.5 + 0.5 * sin(vUv.x * 20.0 - uTime * 3.0 + r * 4.0), 6.0);
             emis += uColor * (0.25 + 0.6 * sh);

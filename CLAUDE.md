@@ -29,6 +29,13 @@ sem outras redes, sem assinatura, sem compras no app.
 - `TowerLevels.level(n)` determinístico; dificuldade sobe até a fase ~120; cada fase é refeita até o `TowerBot`
   vencer a 5,5 rad/s (velocidade humana) — por isso toda fase tem solução. `daily(dia)` igual para todos no dia.
 - Continuar por vídeo (`revive`) uma vez por fase: o anel que matou é quebrado.
+- Obstáculos (a partir da fase, `TowerLevels.*_FROM`): moedas 3 (sobre um vão), vidro 15 (`GLASS`: racha no 1º quique,
+  quebra no 2º), anéis que somem 22 (`Platform.blink`), portal 30 (`PORTAL`: desce 2 anéis). `TowerSim.typeAt()` dá o
+  tipo efetivo no tempo; o robô usa isso. Escudo (`sim.shields`, por vídeo) salva de 1 vermelho.
+- Torre chefe a cada 10 fases (`isBoss`): mais alta, +dificuldade, prêmio ×3, música épica.
+- Queda livre (`TowerLevels.endless(seed)`): ~24 fases checadas coladas (~1000 anéis), recorde `Progress.bestEndless`;
+  gerada em segundo plano (`LevelCache.prefetchEndless`).
+- Câmera lenta (0,3×) quando a bola passa raspando num vermelho (`TowerEvent.*.near`), no máx. a cada 4 s.
 - Pontos acumulam enquanto o jogador vence fases seguidas; zera ao perder (recorde em `Progress.bestScore`).
 
 ## Arquitetura
@@ -40,8 +47,9 @@ sem outras redes, sem assinatura, sem compras no app.
 | `game/GameHost.kt` | Ponte GL ↔ Compose: estado da partida para a UI, sons, vibração, textos flutuantes, missões, moedas. Comandos vão por `queueEvent`. |
 | `gl/TowerRenderer.kt` | Desenho: fundo aurora, pilar, anéis chanfrados, bola, respingos, halos, partículas (point sprites). |
 | `gl/Shaders.kt`, `gl/Meshes.kt` | GLSL ES 3.0 (padrões do pilar e das bolas no shader) e geometria. Use `ss()` em vez de `smoothstep` (bordas invertidas são indefinidas). |
-| `gl/Looks.kt` | As 10 torres e 13 bolas (cores, estilo, preço). |
-| `ui/` | Splash, Home (sobre a torre demo), Game (HUD, arrastar, pausa/derrota/vitória), Shop (prévia 3D ao vivo), Stats, Rewards (missões, baú), Dialogs (configurações, banner). |
+| `gl/Looks.kt` | As 13 torres (com cenário `Env`: céu, base, nuvens, partículas) e 23 bolas; raridade pelo preço. |
+| `data/Achievements.kt`, `data/Trails.kt` | Conquistas (contadores em `Progress`) e os 7 rastros da bola. |
+| `ui/` | Splash, Home (sobre a torre demo), Game (HUD, arrastar, escudo, avisos, pausa/derrota/vitória), Shop (torres/bolas/rastros, prévia 3D, prêmio surpresa, teste por vídeo), Map (mundos de 10 fases), Extras (conquistas, roleta), Stats, Rewards (missões, baú), Dialogs. |
 | `data/Progress.kt`, `data/Missions.kt` | Tudo que persiste (fase, moedas, torres/bolas, recordes, missões, baú, desafio). |
 | `ads/AdsManager.kt` | AdMob + UMP. Intersticial a cada 2 partidas e 90 s, nunca antes de 4 vitórias. |
 | `audio/` | `SoundManager` (inclui `BOUNCE`, `PASS`), `MusicPlayer`, `Haptics` (atributos de mídia — necessário no MIUI). |
@@ -51,7 +59,8 @@ O `TowerView` (GLSurfaceView com MSAA 4×) fica atrás de todas as telas; no men
 ## Convenções
 
 - Textos em 8 idiomas (en, pt, es, fr, de, tr, in, hi): editar `tools/strings.py` e rodar `python3 tools/strings.py app/src/main/res`.
-- Sons: `python3 tools/make_sfx.py app/src/main/res/raw`.
+- Sons: `python3 tools/make_sfx.py app/src/main/res/raw`. Músicas: `python3 tools/make_music.py app/src/main/res/raw/music_<estilo>.ogg <chill|sunny|epic|space>`
+  (`MusicPlayer.trackFor` escolhe por torre). Ícone e arte da loja: `python3 tools/make_art.py .`; textos da loja: `python3 store/listings.py`.
 - Gradientes radiais com raio 0 derrubam o app: proteger tamanhos < 1 px.
 - Em tablet o app inteiro é desenhado maior (`Scaled` no MainActivity).
 - **Desempenho é prioridade (o Eldo quer o jogo extremamente leve):** nada de alocar objetos no laço de desenho
@@ -73,7 +82,6 @@ O `TowerView` (GLSurfaceView com MSAA 4×) fica atrás de todas as telas; no men
 ## Pendências
 
 1. Eldo testar no celular: sensação do arrasto (`TURN_PER_WIDTH` em `GameScreen.kt`), câmera, dificuldade, desempenho.
-2. Ícone e arte da loja (`tools/make_art.py` ainda tem a arte do Prisma Jam), textos da loja (`store/listings.py`
-   e `store/PUBLICAR.md` ainda são do Jam), prints com legendas nos idiomas.
-3. Criar o app no AdMob, blocos reais e secrets `ADMOB_*`; keystore e secrets `KEYSTORE_*`; publicar.
+2. Prints da loja (o Eldo tira no celular). Ícone, gráfico e textos (8 idiomas) prontos.
+3. Seguir `store/PUBLICAR.md`: keystore + secrets `KEYSTORE_*`, app e blocos no AdMob + secrets `ADMOB_*`, Play Console.
 4. `docs/privacy.html` publicado no GitHub Pages (link em `ui/Dialogs.kt`).

@@ -11,6 +11,7 @@ import androidx.compose.runtime.mutableIntStateOf
 import androidx.compose.runtime.mutableStateListOf
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.setValue
+import com.farias.prismatower.R
 import com.farias.prismatower.audio.Haptic
 import com.farias.prismatower.audio.Haptics
 import com.farias.prismatower.audio.Sfx
@@ -71,6 +72,30 @@ class GameHost(context: Context) : TowerGame.Callbacks {
         private set
     val popups = mutableStateListOf<Popup>()
 
+    /** Endless mode ("free fall") run. */
+    var endless by mutableStateOf(false)
+        private set
+    /** This level is a boss tower. */
+    var boss by mutableStateOf(false)
+        private set
+    /** Rings passed in this level (the endless depth). */
+    var depth by mutableIntStateOf(0)
+        private set
+    var shields by mutableIntStateOf(0)
+        private set
+    var coinsThisLevel by mutableIntStateOf(0)
+        private set
+    /** String resource of a mechanic shown for the first time in this level (0 = none). */
+    var notice by mutableIntStateOf(0)
+        private set
+    /** Deaths on the current level number (to offer the shield). */
+    var failsHere by mutableIntStateOf(0)
+        private set
+    private var failsLevel = -1
+    private var bounces = 0
+    private var glassCount = 0
+    private var portalCount = 0
+
     private var passed = 0
     private var smashed = 0
     private var bestComboThisLevel = 0
@@ -84,10 +109,18 @@ class GameHost(context: Context) : TowerGame.Callbacks {
         if (v != null) v.queueEvent(block) else block()
     }
 
-    fun applyLooks(towerId: String = Progress.towerId, ballId: String = Progress.ballId) {
+    fun applyLooks(
+        towerId: String = if (Progress.trialGames > 0 && Progress.trialTower.isNotEmpty()) Progress.trialTower else Progress.towerId,
+        ballId: String = if (Progress.trialGames > 0 && Progress.trialBall.isNotEmpty()) Progress.trialBall else Progress.ballId,
+        trailId: String = Progress.trailId,
+    ) {
         val t = Looks.tower(towerId)
         val b = Looks.ball(ballId)
-        gl { game.tower = t; game.ball = b }
+        val trail = com.farias.prismatower.data.Trails.byId(trailId).style
+        com.farias.prismatower.audio.MusicPlayer.select(
+            com.farias.prismatower.audio.MusicPlayer.trackFor(towerId, boss && phase == Phase.PLAYING),
+        )
+        gl { game.tower = t; game.ball = b; game.trailStyle = trail }
     }
 
     fun showMenu() {
@@ -100,6 +133,7 @@ class GameHost(context: Context) : TowerGame.Callbacks {
 
     fun play(n: Int, keepScore: Boolean = false) {
         daily = false
+        endless = false
         level = n
         start(LevelCache.get(n), keepScore)
         LevelCache.prefetch(n + 1)
@@ -107,13 +141,36 @@ class GameHost(context: Context) : TowerGame.Callbacks {
 
     fun playDaily() {
         daily = true
+        endless = false
         level = dayIndex()
         start(LevelCache.daily(dayIndex()), false)
         LevelCache.prefetch(Progress.level)
     }
 
+    fun playEndless() {
+        daily = false
+        endless = true
+        level = 0
+        start(LevelCache.endless(), false)
+    }
+
     fun retry() {
-        if (daily) playDaily() else play(level)
+        when {
+            endless -> playEndless()
+            daily -> playDaily()
+            else -> play(level)
+        }
+    }
+
+    /** One extra shield for this level (rewarded video). */
+    fun addShield() {
+        shields += 1
+        sound.play(Sfx.REVIVE, 0.8f)
+        gl { game.sim.shields += 1 }
+    }
+
+    fun clearNotice() {
+        notice = 0
     }
 
     fun next() = play(Progress.level, keepScore = true)
@@ -133,8 +190,26 @@ class GameHost(context: Context) : TowerGame.Callbacks {
         smashed = 0
         bestComboThisLevel = 0
         popups.clear()
+        depth = 0
+        endlessPaid = 0
+        shields = 0
+        coinsThisLevel = 0
+        bounces = 0
+        glassCount = 0
+        portalCount = 0
+        boss = lv.boss
+        val key = if (endless) -1 else if (daily) -2 else level
+        if (key != failsLevel) { failsLevel = key; failsHere = 0 }
+        notice = when {
+            SliceType.GLASS in lv.mechanics && "glass" !in Progress.seenMechanics -> { Progress.markMechanicSeen("glass"); R.string.mech_glass }
+            lv.hasBlink && "blink" !in Progress.seenMechanics -> { Progress.markMechanicSeen("blink"); R.string.mech_blink }
+            SliceType.PORTAL in lv.mechanics && "portal" !in Progress.seenMechanics -> { Progress.markMechanicSeen("portal"); R.string.mech_portal }
+            lv.platforms.any { it.coin >= 0 } && "coins" !in Progress.seenMechanics -> { Progress.markMechanicSeen("coins"); R.string.mech_coins }
+            else -> 0
+        }
         phase = Phase.PLAYING
         applyLooks()
+        Progress.useTrialGame()
         gl { game.startPlay(lv) }
     }
 
@@ -179,18 +254,48 @@ class GameHost(context: Context) : TowerGame.Callbacks {
         val x = game.ballScreenX
         val y = game.ballScreenY
         val fire = sim.onFire
-        main.post { handle(e, sc, prog, x, y, fire) }
+        val d = sim.next
+        main.post { handle(e, sc, prog, x, y, fire, d) }
     }
 
     override fun onFrame(game: TowerGame) = Unit
 
-    private fun handle(e: TowerEvent, simScore: Int, prog: Float, x: Float, y: Float, fire: Boolean) {
+    private fun handle(e: TowerEvent, simScore: Int, prog: Float, x: Float, y: Float, fire: Boolean, d: Int) {
         if (phase != Phase.PLAYING) return
         score = runBase + simScore
         progress = prog
         onFire = fire
+        depth = d
         when (e) {
+            is TowerEvent.Coin -> {
+                coinsThisLevel++
+                Progress.addCoins(COIN_VALUE)
+                sound.play(Sfx.COIN, 0.7f, 1.2f)
+                popup("+$COIN_VALUE", x, y - 0.04f, 2)
+            }
+            is TowerEvent.GlassBreak -> {
+                glassCount++
+                sound.play(Sfx.GLASS, 0.6f, 1.3f)
+                haptic(Haptic.PLACE)
+            }
+            is TowerEvent.Portal -> {
+                portalCount++
+                passed += 2
+                combo += 2
+                sound.play(Sfx.WHOOSH, 1f, 1.5f)
+                haptic(Haptic.COMBO)
+                popup("+${e.points}", x, y, 1)
+            }
+            is TowerEvent.Shield -> {
+                shields = (shields - 1).coerceAtLeast(0)
+                passed++
+                combo = 0
+                sound.play(Sfx.REVIVE)
+                haptic(Haptic.HEAVY)
+                popup("🛡", x, y - 0.06f, 4)
+            }
             is TowerEvent.Bounce -> {
+                bounces++
                 combo = 0
                 val now = SystemClock.uptimeMillis()
                 if (now - lastBounceSound > 90) {
@@ -237,6 +342,17 @@ class GameHost(context: Context) : TowerGame.Callbacks {
     }
 
     private fun finishStats(won: Boolean) {
+        Progress.addStats(
+            bosses = if (won && boss) 1 else 0,
+            perfect = if (won && bounces == 0 && !endless) 1 else 0,
+            coins = coinsThisLevel,
+            glass = glassCount,
+            portals = portalCount,
+        )
+        coinsThisLevel = 0
+        glassCount = 0
+        portalCount = 0
+        if (!won) failsHere += 1
         Progress.onRings(passed, smashed, bestComboThisLevel)
         Progress.missionEvent(MissionType.RINGS, passed)
         Progress.missionEvent(MissionType.SMASH, smashed)
@@ -244,15 +360,27 @@ class GameHost(context: Context) : TowerGame.Callbacks {
         passed = 0
         smashed = 0
         newBest = Progress.onScore(score)
-        if (won) {
+        if (endless) {
+            newBest = Progress.onEndless(depth) || newBest
+            // Coins for the depth reached (only the part not paid yet if the run was continued).
+            val total = depth / 4 + if (won) 500 else 0
+            lastReward = (total - endlessPaid).coerceAtLeast(0)
+            endlessPaid = total
+            Progress.addCoins(lastReward)
+            return
+        }
+        if (won && !endless) {
             Progress.onLevelWon(level, daily)
             Progress.missionEvent(MissionType.LEVELS, 1)
             Progress.missionEvent(MissionType.STREAK, Progress.winStreak, asMax = true)
-            lastReward = if (daily) Progress.onDailyWon() else Progress.levelReward(level).also { Progress.addCoins(it) }
+            lastReward = if (daily) Progress.onDailyWon()
+            else (Progress.levelReward(level) * (if (boss) 3 else 1)).also { Progress.addCoins(it) }
         } else {
             lastReward = 0
         }
     }
+
+    private var endlessPaid = 0
 
     /** Ends a lost attempt for good (the player gave up the "continue"). */
     fun giveUp() {
@@ -271,6 +399,8 @@ class GameHost(context: Context) : TowerGame.Callbacks {
     }
 
     companion object {
+        const val COIN_VALUE = 2
+
         /** Local calendar day number (same challenge for everyone on the same date). */
         fun dayIndex(): Int {
             val c = Calendar.getInstance()

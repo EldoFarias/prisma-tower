@@ -11,353 +11,325 @@ HERE = os.path.dirname(os.path.abspath(__file__))
 
 L = {}
 
+L["pt-BR"] = dict(
+    title="Prisma Tower: Torre Helix 3D",
+    short="Gire a torre, faça a bola quicar até o fundo e quebre anéis pegando fogo!",
+    full="""Gire a torre com o dedo e guie a bola quicando de anel em anel até a meta dourada lá embaixo. Atravesse 3 anéis seguidos e a bola pega fogo, quebrando tudo pelo caminho! Prisma Tower é um jogo 3D rápido, bonito e viciante: fácil de começar, difícil de largar.
+
+★ COMO JOGAR
+• Arraste o dedo para girar a torre
+• Caia pelos vãos e evite as partes vermelhas
+• 3 anéis seguidos sem quicar = modo fogo, que quebra até o vermelho
+
+★ FASES INFINITAS
+• Cada fase é diferente, e todas têm solução
+• Torre chefe a cada 10 fases: mais alta, mais difícil e com prêmio triplo
+• Mapa de mundos para acompanhar seu caminho
+• Obstáculos novos: vidro que racha e quebra, anéis que somem, portais que pulam dois andares, anéis que giram e balançam
+• Moedas flutuando no caminho
+
+★ QUEDA LIVRE
+• Modo infinito: até onde você consegue descer?
+• Bata o seu recorde a cada partida
+
+★ TODO DIA TEM NOVIDADE
+• Desafio diário igual para todos
+• Roleta da sorte diária
+• Três missões por dia e baú de 7 dias
+• Mais de 20 conquistas com recompensas
+
+★ VISUAL PREMIUM
+• 13 torres com cenários próprios: montanhas nevadas, cidade neon, vulcão, espaço, deserto, castelo e mais
+• 23 bolas, de pérola e cromo até planeta Terra, galáxia e joia
+• Rastros especiais: arco-íris, estrelas, fogo azul e pó de ouro
+• Partículas, câmera lenta nos momentos de perigo, música por tema
+• Leve e fluido, funciona sem internet
+
+Grátis, com anúncios. Não precisa de conta.
+""",
+    captions=["Gire a torre e caia!", "Modo fogo quebra tudo", "Torres chefe a cada 10 fases",
+              "Queda livre infinita", "13 torres, 23 bolas", "Cenários incríveis", "Roleta, missões e conquistas"],
+)
+
 L["en-US"] = dict(
-    title="Prisma Tower: Jelly Block Puzzle",
-    short="Slide jelly blocks to the gate of their color and watch them burst into glass!",
-    full="""Slide the glossy jelly blocks to the gate of the same color and watch them burst into a shower of glass. Prisma Tower is an elegant sliding puzzle: easy to start, hard to master, with a clock ticking.
+    title="Prisma Tower: Helix Jump 3D",
+    short="Spin the tower, bounce the ball down and smash rings on fire!",
+    full="""Spin the tower with your finger and guide the bouncing ball ring by ring down to the golden goal. Fall through 3 rings in a row and the ball catches fire, smashing everything in its way! Prisma Tower is a fast, beautiful and addictive 3D game: easy to start, hard to put down.
 
-★ A PUZZLE THAT MAKES YOU THINK
-• Every block needs a free path to its gate: find the right order
-• Only a few moves are possible at a time: plan ahead
-• A hard level every 10 levels, then a breather
-• Endless levels, every one different, every one solvable
+★ HOW TO PLAY
+• Drag to spin the tower
+• Fall through the gaps and avoid the red parts
+• 3 rings in a row without bouncing = fire mode, which smashes even red
 
-★ NEW TWISTS AS YOU PLAY
-• Stones that never move
-• Frozen blocks that melt as others leave
-• One-way blocks with arrows
-• Two-layer blocks: break the shell, then find the new color
-• Keys and padlocks
-• Gates that open and close on a timer
+★ ENDLESS LEVELS
+• Every level is different, and every one is beatable
+• A boss tower every 10 levels: taller, harder, triple reward
+• World map to follow your journey
+• New obstacles: glass that cracks and shatters, fading rings, portals that skip two floors, spinning and swinging rings
+• Coins floating on the way down
 
-★ POWER-UPS
-• Hint: shows the block that can leave now
-• Freeze: stops the clock for 10 seconds
-• Hammer: smashes any block
-• Scissors: cuts a block in two
+★ FREE FALL
+• Endless mode: how deep can you go?
+• Beat your record every run
 
-★ EVERY DAY
-• Daily challenge with a streak to keep alive
-• Three daily missions and a daily chest that grows over 7 days
-• Level map with worlds, stars and chests along the trail
+★ SOMETHING NEW EVERY DAY
+• Daily challenge, the same for everyone
+• Daily lucky wheel
+• Three daily missions and a 7-day chest
+• 20+ achievements with rewards
 
-★ MADE TO FEEL GOOD
-• Glossy 3D jelly blocks and a premium neon look
-• Satisfying glass-burst effect every time a block leaves
-• 6 themes: Neon, Ocean, Candy, Lava, Galaxy and Gold
-• Relaxing music, sounds and vibration (all optional)
-• Works offline
+★ PREMIUM LOOK
+• 13 towers with their own worlds: snowy peaks, neon city, volcano, space, desert, castle and more
+• 23 balls, from pearl and chrome to planet Earth, galaxy and gem
+• Special trails: rainbow, stars, blue fire and gold dust
+• Particles, slow motion on close calls, music for each theme
+• Light and smooth, works offline
 
 Free to play, with ads. No account needed.
 """,
-    captions=["Slide blocks to their gate", "Burst them into glass", "Plan the right order",
-              "New twists as you play", "Power-ups when you need them", "Daily challenge and map", "6 beautiful themes"],
-)
-
-L["pt-BR"] = dict(
-    title="Prisma Tower: Blocos de Cores",
-    short="Deslize os blocos de gelatina até a porta da mesma cor e veja-os virar vidro!",
-    full="""Deslize os blocos de gelatina brilhantes até a porta da mesma cor e veja cada um explodir numa chuva de vidro. Prisma Tower é um quebra-cabeça elegante: fácil de começar, difícil de dominar, com o relógio correndo.
-
-★ UM QUEBRA-CABEÇA QUE FAZ PENSAR
-• Cada bloco precisa de caminho livre até a sua porta: descubra a ordem certa
-• Só alguns movimentos são possíveis por vez: planeje antes
-• Uma fase difícil a cada 10 fases, e depois um respiro
-• Fases infinitas, todas diferentes, todas com solução
-
-★ NOVIDADES PELO CAMINHO
-• Pedras que nunca se movem
-• Blocos congelados que derretem quando outros saem
-• Blocos de direção, com setas
-• Blocos de duas camadas: quebre a casca e encontre a nova cor
-• Chaves e cadeados
-• Portas que abrem e fecham com o tempo
-
-★ PODERES
-• Dica: mostra o bloco que pode sair agora
-• Congelar: para o relógio por 10 segundos
-• Martelo: quebra qualquer bloco
-• Tesoura: corta um bloco em dois
-
-★ TODO DIA
-• Desafio diário com sequência de dias para manter
-• Três missões diárias e um baú diário que cresce ao longo de 7 dias
-• Mapa de fases com mundos, estrelas e baús pelo caminho
-
-★ FEITO PARA SER GOSTOSO DE JOGAR
-• Blocos de gelatina 3D brilhantes e visual neon premium
-• Efeito de vidro estilhaçando toda vez que um bloco sai
-• 6 temas: Neon, Oceano, Doces, Lava, Galáxia e Ouro
-• Música relaxante, sons e vibração (tudo opcional)
-• Funciona sem internet
-
-Gratuito, com anúncios. Não precisa de conta.
-""",
-    captions=["Leve cada bloco à sua porta", "Veja-os virar vidro", "Descubra a ordem certa",
-              "Novidades pelo caminho", "Poderes quando precisar", "Desafio diário e mapa", "6 temas lindos"],
+    captions=["Spin the tower and fall!", "Fire mode smashes all", "Boss towers every 10 levels",
+              "Endless free fall", "13 towers, 23 balls", "Amazing worlds", "Wheel, missions, achievements"],
 )
 
 L["es-ES"] = dict(
-    title="Prisma Tower: Bloques de Color",
-    short="Desliza bloques de gelatina a la puerta de su color y míralos hacerse cristal.",
-    full="""Desliza los brillantes bloques de gelatina hasta la puerta del mismo color y mira cómo estallan en una lluvia de cristal. Prisma Tower es un rompecabezas elegante: fácil de empezar, difícil de dominar, con el reloj en marcha.
+    title="Prisma Tower: Helix 3D",
+    short="¡Gira la torre, haz rebotar la bola hasta el fondo y rompe anillos en llamas!",
+    full="""Gira la torre con el dedo y guía la bola rebotando de anillo en anillo hasta la meta dorada. ¡Atraviesa 3 anillos seguidos y la bola se enciende, rompiendo todo a su paso! Prisma Tower es un juego 3D rápido, bonito y adictivo: fácil de empezar, difícil de dejar.
 
-★ UN ROMPECABEZAS QUE HACE PENSAR
-• Cada bloque necesita un camino libre hasta su puerta: descubre el orden correcto
-• Solo hay unos pocos movimientos posibles a la vez: planifica
-• Un nivel difícil cada 10 niveles, y luego un respiro
-• Niveles infinitos, todos distintos, todos con solución
+★ CÓMO JUGAR
+• Arrastra para girar la torre
+• Cae por los huecos y evita las partes rojas
+• 3 anillos seguidos sin rebotar = modo fuego, que rompe hasta el rojo
 
-★ NOVEDADES POR EL CAMINO
-• Piedras que nunca se mueven
-• Bloques congelados que se derriten cuando salen otros
-• Bloques de dirección, con flechas
-• Bloques de dos capas: rompe la cáscara y busca el nuevo color
-• Llaves y candados
-• Puertas que se abren y se cierran con el tiempo
+★ NIVELES INFINITOS
+• Cada nivel es diferente, y todos tienen solución
+• Torre jefe cada 10 niveles: más alta, más difícil y premio triple
+• Mapa de mundos para seguir tu camino
+• Nuevos obstáculos: vidrio que se agrieta, anillos que desaparecen, portales que saltan dos pisos, anillos que giran
+• Monedas flotando en el camino
 
-★ PODERES
-• Pista: muestra el bloque que puede salir ahora
-• Congelar: detiene el reloj 10 segundos
-• Martillo: rompe cualquier bloque
-• Tijeras: corta un bloque en dos
+★ CAÍDA LIBRE
+• Modo infinito: ¿hasta dónde puedes bajar?
+• Supera tu récord en cada partida
 
-★ CADA DÍA
-• Desafío diario con racha de días para mantener
-• Tres misiones diarias y un cofre diario que crece durante 7 días
-• Mapa de niveles con mundos, estrellas y cofres por el camino
+★ NOVEDADES CADA DÍA
+• Desafío diario igual para todos
+• Ruleta de la suerte diaria
+• Tres misiones diarias y cofre de 7 días
+• Más de 20 logros con recompensas
 
-★ HECHO PARA DISFRUTAR
-• Bloques de gelatina 3D brillantes y un look neón premium
-• Efecto de cristal que estalla cada vez que sale un bloque
-• 6 temas: Neón, Océano, Dulces, Lava, Galaxia y Oro
-• Música relajante, sonidos y vibración (todo opcional)
-• Funciona sin internet
+★ ASPECTO PREMIUM
+• 13 torres con sus propios mundos: montañas nevadas, ciudad neón, volcán, espacio, desierto, castillo y más
+• 23 bolas, de perla y cromo hasta la Tierra, galaxia y gema
+• Estelas especiales: arcoíris, estrellas, fuego azul y polvo de oro
+• Partículas, cámara lenta en los momentos de peligro, música por tema
+• Ligero y fluido, funciona sin conexión
 
 Gratis, con anuncios. No necesitas cuenta.
 """,
-    captions=["Lleva cada bloque a su puerta", "Míralos hacerse cristal", "Descubre el orden correcto",
-              "Novedades por el camino", "Poderes cuando los necesites", "Desafío diario y mapa", "6 temas preciosos"],
+    captions=["¡Gira la torre y cae!", "El modo fuego lo rompe todo", "Torres jefe cada 10 niveles",
+              "Caída libre infinita", "13 torres, 23 bolas", "Mundos increíbles", "Ruleta, misiones y logros"],
 )
 
 L["fr-FR"] = dict(
-    title="Prisma Tower : Blocs de Couleur",
-    short="Glisse les blocs de gelée vers la porte de leur couleur et vois-les éclater !",
-    full="""Fais glisser les blocs de gelée brillants vers la porte de la même couleur et regarde-les éclater en pluie de verre. Prisma Tower est un puzzle élégant : facile à commencer, difficile à maîtriser, avec le chrono qui tourne.
+    title="Prisma Tower: Helix 3D",
+    short="Tourne la tour, fais rebondir la balle et brise les anneaux en feu !",
+    full="""Tourne la tour du doigt et guide la balle qui rebondit d'anneau en anneau jusqu'à l'arrivée dorée. Traverse 3 anneaux d'affilée et la balle prend feu, brisant tout sur son passage ! Prisma Tower est un jeu 3D rapide, beau et addictif : facile à prendre en main, difficile à lâcher.
 
-★ UN PUZZLE QUI FAIT RÉFLÉCHIR
-• Chaque bloc a besoin d'un chemin libre jusqu'à sa porte : trouve le bon ordre
-• Seuls quelques coups sont possibles à la fois : anticipe
-• Un niveau difficile tous les 10 niveaux, puis une pause
-• Niveaux infinis, tous différents, tous avec une solution
+★ COMMENT JOUER
+• Glisse pour tourner la tour
+• Tombe par les trous et évite les parties rouges
+• 3 anneaux d'affilée sans rebond = mode feu, qui brise même le rouge
 
-★ DES NOUVEAUTÉS EN CHEMIN
-• Des pierres qui ne bougent jamais
-• Des blocs gelés qui fondent quand d'autres sortent
-• Des blocs à sens unique, avec des flèches
-• Des blocs à deux couches : casse la coque et trouve la nouvelle couleur
-• Des clés et des cadenas
-• Des portes qui s'ouvrent et se ferment avec le temps
+★ NIVEAUX INFINIS
+• Chaque niveau est différent, et tous sont faisables
+• Une tour du boss tous les 10 niveaux : plus haute, plus dure, récompense triple
+• Carte des mondes pour suivre ton parcours
+• Nouveaux obstacles : verre qui se fissure, anneaux qui disparaissent, portails qui sautent deux étages, anneaux qui tournent
+• Des pièces flottent sur le chemin
 
-★ BONUS
-• Indice : montre le bloc qui peut sortir maintenant
-• Gel : arrête le chrono 10 secondes
-• Marteau : casse n'importe quel bloc
-• Ciseaux : coupe un bloc en deux
+★ CHUTE LIBRE
+• Mode infini : jusqu'où peux-tu descendre ?
+• Bats ton record à chaque partie
 
-★ CHAQUE JOUR
-• Défi du jour avec une série de jours à garder
-• Trois missions par jour et un coffre quotidien qui grandit sur 7 jours
-• Carte des niveaux avec mondes, étoiles et coffres en chemin
+★ DU NOUVEAU CHAQUE JOUR
+• Défi du jour, le même pour tous
+• Roue de la chance quotidienne
+• Trois missions par jour et un coffre sur 7 jours
+• Plus de 20 succès avec récompenses
 
-★ FAIT POUR FAIRE DU BIEN
-• Blocs de gelée 3D brillants et look néon premium
-• Effet de verre qui éclate à chaque bloc qui sort
-• 6 thèmes : Néon, Océan, Bonbons, Lave, Galaxie et Or
-• Musique relaxante, sons et vibrations (tout est optionnel)
-• Fonctionne hors ligne
+★ UN LOOK PREMIUM
+• 13 tours avec leurs propres mondes : pics enneigés, ville néon, volcan, espace, désert, château et plus
+• 23 balles, de la perle et du chrome à la Terre, la galaxie et la gemme
+• Traînées spéciales : arc-en-ciel, étoiles, feu bleu et poudre d'or
+• Particules, ralenti dans les moments chauds, musique pour chaque thème
+• Léger et fluide, fonctionne hors ligne
 
-Gratuit, avec publicités. Aucun compte nécessaire.
+Gratuit, avec publicités. Aucun compte requis.
 """,
-    captions=["Chaque bloc vers sa porte", "Regarde-les éclater", "Trouve le bon ordre",
-              "Des nouveautés en chemin", "Des bonus quand il faut", "Défi du jour et carte", "6 jolis thèmes"],
+    captions=["Tourne la tour et tombe !", "Le mode feu brise tout", "Un boss tous les 10 niveaux",
+              "Chute libre infinie", "13 tours, 23 balles", "Des mondes superbes", "Roue, missions et succès"],
 )
 
 L["de-DE"] = dict(
-    title="Prisma Tower: Farbblock-Puzzle",
-    short="Schiebe Geleeblöcke zum Tor ihrer Farbe und sieh sie zu Glas zerspringen!",
-    full="""Schiebe die glänzenden Geleeblöcke zum Tor derselben Farbe und sieh zu, wie sie in einem Glasregen zerspringen. Prisma Tower ist ein elegantes Schiebepuzzle: leicht zu lernen, schwer zu meistern, mit tickender Uhr.
+    title="Prisma Tower: Helix 3D",
+    short="Dreh den Turm, lass den Ball nach unten springen und zerschmettere Ringe!",
+    full="""Dreh den Turm mit dem Finger und führe den springenden Ball Ring für Ring hinunter zum goldenen Ziel. Fall durch 3 Ringe in Folge und der Ball fängt Feuer und zerschmettert alles auf seinem Weg! Prisma Tower ist ein schnelles, schönes 3D-Spiel mit Suchtfaktor: leicht zu lernen, schwer aus der Hand zu legen.
 
-★ EIN PUZZLE ZUM NACHDENKEN
-• Jeder Block braucht einen freien Weg zu seinem Tor: finde die richtige Reihenfolge
-• Nur wenige Züge sind gleichzeitig möglich: plane voraus
-• Alle 10 Level ein schweres Level, danach eine Verschnaufpause
-• Endlose Level, alle verschieden, alle lösbar
+★ SO WIRD GESPIELT
+• Ziehen, um den Turm zu drehen
+• Durch die Lücken fallen und die roten Teile meiden
+• 3 Ringe in Folge ohne Aufprall = Feuermodus, der sogar Rot zerschmettert
 
-★ NEUES UNTERWEGS
-• Steine, die sich nie bewegen
-• Gefrorene Blöcke, die auftauen, wenn andere gehen
-• Richtungsblöcke mit Pfeilen
-• Zweischichtige Blöcke: Hülle knacken, neue Farbe finden
-• Schlüssel und Schlösser
-• Tore, die sich mit der Zeit öffnen und schließen
+★ ENDLOSE LEVEL
+• Jedes Level ist anders, und jedes ist schaffbar
+• Alle 10 Level ein Bossturm: höher, schwerer, dreifache Belohnung
+• Weltkarte, um deinem Weg zu folgen
+• Neue Hindernisse: Glas, das bricht, verschwindende Ringe, Portale, die zwei Etagen überspringen, drehende Ringe
+• Münzen schweben auf dem Weg nach unten
 
-★ POWER-UPS
-• Tipp: zeigt den Block, der jetzt rausgehen kann
-• Einfrieren: stoppt die Uhr für 10 Sekunden
-• Hammer: zerschlägt jeden Block
-• Schere: schneidet einen Block in zwei Teile
+★ FREIER FALL
+• Endlosmodus: Wie tief schaffst du es?
+• Knack deinen Rekord in jedem Lauf
 
-★ JEDEN TAG
-• Tägliche Challenge mit einer Serie zum Halten
-• Drei tägliche Missionen und eine Tagestruhe, die über 7 Tage wächst
-• Levelkarte mit Welten, Sternen und Truhen am Weg
+★ JEDEN TAG ETWAS NEUES
+• Tägliche Challenge, für alle gleich
+• Tägliches Glücksrad
+• Drei tägliche Missionen und eine 7-Tage-Truhe
+• Über 20 Erfolge mit Belohnungen
 
-★ ZUM WOHLFÜHLEN GEMACHT
-• Glänzende 3D-Geleeblöcke und ein edler Neon-Look
-• Glas-Effekt, jedes Mal wenn ein Block rausgeht
-• 6 Themen: Neon, Ozean, Süßigkeiten, Lava, Galaxie und Gold
-• Entspannende Musik, Sounds und Vibration (alles optional)
-• Funktioniert offline
+★ PREMIUM-LOOK
+• 13 Türme mit eigenen Welten: verschneite Gipfel, Neonstadt, Vulkan, Weltraum, Wüste, Burg und mehr
+• 23 Bälle, von Perle und Chrom bis Erde, Galaxie und Juwel
+• Besondere Spuren: Regenbogen, Sterne, blaues Feuer und Goldstaub
+• Partikel, Zeitlupe bei knappen Momenten, Musik je Thema
+• Leicht und flüssig, funktioniert offline
 
 Kostenlos, mit Werbung. Kein Konto nötig.
 """,
-    captions=["Jeder Block zu seinem Tor", "Sieh sie zu Glas zerspringen", "Finde die richtige Reihenfolge",
-              "Neues unterwegs", "Power-ups, wenn du sie brauchst", "Tägliche Challenge und Karte", "6 schöne Themen"],
+    captions=["Dreh den Turm und fall!", "Feuermodus zerschmettert alles", "Bossturm alle 10 Level",
+              "Endloser freier Fall", "13 Türme, 23 Bälle", "Atemberaubende Welten", "Glücksrad, Missionen, Erfolge"],
 )
 
 L["tr-TR"] = dict(
-    title="Prisma Tower: Renkli Blok",
-    short="Jöle blokları kendi renklerindeki kapıya kaydır ve cam gibi patlamalarını izle!",
-    full="""Parlak jöle blokları aynı renkteki kapıya kaydır ve cam yağmuruna dönüşmelerini izle. Prisma Tower zarif bir kaydırma bulmacası: başlaması kolay, ustalaşması zor ve saat işliyor.
+    title="Prisma Tower: Helix 3D",
+    short="Kuleyi çevir, topu aşağı zıplat ve alevle halkaları kır!",
+    full="""Kuleyi parmağınla çevir ve zıplayan topu halka halka altın hedefe kadar indir. Üst üste 3 halkadan geç, top alev alsın ve yolundaki her şeyi kırsın! Prisma Tower hızlı, güzel ve bağımlılık yapan bir 3D oyun: başlaması kolay, bırakması zor.
 
-★ DÜŞÜNDÜREN BİR BULMACA
-• Her bloğun kapısına kadar boş bir yolu olmalı: doğru sırayı bul
-• Aynı anda sadece birkaç hamle mümkün: önceden planla
-• Her 10 bölümde bir zor bölüm, sonra bir nefes molası
-• Sonsuz bölüm, hepsi farklı, hepsi çözülebilir
+★ NASIL OYNANIR
+• Kuleyi çevirmek için sürükle
+• Boşluklardan düş, kırmızı kısımlardan kaçın
+• Sekmeden üst üste 3 halka = alev modu, kırmızıyı bile kırar
 
-★ YOL BOYUNCA YENİLİKLER
-• Asla hareket etmeyen taşlar
-• Diğerleri çıktıkça eriyen donmuş bloklar
-• Oklu, tek yönlü bloklar
-• İki katmanlı bloklar: kabuğu kır, yeni rengi bul
-• Anahtarlar ve kilitler
-• Zamanla açılıp kapanan kapılar
+★ SONSUZ BÖLÜMLER
+• Her bölüm farklı ve hepsi geçilebilir
+• Her 10 bölümde bir patron kule: daha yüksek, daha zor, üç kat ödül
+• Yolculuğunu takip etmek için dünya haritası
+• Yeni engeller: çatlayıp kırılan cam, kaybolan halkalar, iki kat atlatan portallar, dönen halkalar
+• Yolda süzülen altınlar
 
-★ GÜÇLER
-• İpucu: şimdi çıkabilecek bloğu gösterir
-• Dondur: saati 10 saniye durdurur
-• Çekiç: herhangi bir bloğu kırar
-• Makas: bir bloğu ikiye böler
+★ SERBEST DÜŞÜŞ
+• Sonsuz mod: ne kadar derine inebilirsin?
+• Her oyunda rekorunu kır
 
-★ HER GÜN
-• Serini korumak için günlük görev
-• Üç günlük görev ve 7 gün boyunca büyüyen günlük sandık
-• Dünyalar, yıldızlar ve yol sandıklarıyla bölüm haritası
+★ HER GÜN YENİ BİR ŞEY
+• Herkes için aynı günlük görev
+• Günlük şans çarkı
+• Günde üç görev ve 7 günlük sandık
+• Ödüllü 20'den fazla başarım
 
-★ KEYİF VERMEK İÇİN
-• Parlak 3D jöle bloklar ve premium neon görünüm
-• Her blok çıktığında cam patlama efekti
-• 6 tema: Neon, Okyanus, Şeker, Lav, Galaksi ve Altın
-• Rahatlatıcı müzik, sesler ve titreşim (hepsi isteğe bağlı)
-• İnternetsiz çalışır
+★ PREMIUM GÖRÜNÜM
+• Kendi dünyası olan 13 kule: karlı zirveler, neon şehir, volkan, uzay, çöl, kale ve daha fazlası
+• İnciden kroma, Dünya'dan galaksiye ve mücevhere 23 top
+• Özel izler: gökkuşağı, yıldızlar, mavi ateş ve altın tozu
+• Parçacıklar, tehlikeli anlarda ağır çekim, her temaya özel müzik
+• Hafif ve akıcı, internetsiz çalışır
 
 Ücretsiz, reklamlı. Hesap gerekmez.
 """,
-    captions=["Her bloğu kapısına götür", "Cam gibi patlamalarını izle", "Doğru sırayı bul",
-              "Yol boyunca yenilikler", "Gerektiğinde güçler", "Günlük görev ve harita", "6 güzel tema"],
+    captions=["Kuleyi çevir ve düş!", "Alev modu her şeyi kırar", "Her 10 bölümde patron",
+              "Sonsuz serbest düşüş", "13 kule, 23 top", "Muhteşem dünyalar", "Çark, görevler, başarımlar"],
 )
 
 L["id"] = dict(
-    title="Prisma Tower: Puzzle Blok Warna",
-    short="Geser blok jeli ke gerbang warnanya dan lihat mereka pecah jadi kaca!",
-    full="""Geser blok jeli yang berkilau ke gerbang dengan warna yang sama dan lihat mereka pecah jadi hujan kaca. Prisma Tower adalah puzzle geser yang elegan: mudah dimulai, sulit dikuasai, dengan waktu yang terus berjalan.
+    title="Prisma Tower: Helix 3D",
+    short="Putar menara, pantulkan bola ke bawah, dan hancurkan cincin dengan api!",
+    full="""Putar menara dengan jarimu dan pandu bola yang memantul dari cincin ke cincin sampai ke garis finis emas. Lewati 3 cincin berturut-turut dan bola akan terbakar, menghancurkan semua yang dilewatinya! Prisma Tower adalah game 3D yang cepat, indah, dan bikin ketagihan: mudah dimulai, sulit berhenti.
 
-★ PUZZLE YANG BIKIN BERPIKIR
-• Setiap blok butuh jalan bebas ke gerbangnya: temukan urutan yang tepat
-• Hanya sedikit langkah yang mungkin dalam satu waktu: rencanakan dulu
-• Level sulit setiap 10 level, lalu level santai
-• Level tanpa akhir, semuanya berbeda, semuanya bisa diselesaikan
+★ CARA BERMAIN
+• Geser untuk memutar menara
+• Jatuh lewat celah dan hindari bagian merah
+• 3 cincin berturut-turut tanpa memantul = mode api, bahkan menghancurkan merah
 
-★ KEJUTAN BARU DI SEPANJANG JALAN
-• Batu yang tidak pernah bergerak
-• Blok beku yang mencair saat blok lain keluar
-• Blok satu arah dengan panah
-• Blok dua lapis: pecahkan cangkangnya, temukan warna barunya
-• Kunci dan gembok
-• Gerbang yang membuka dan menutup sesuai waktu
+★ LEVEL TANPA BATAS
+• Setiap level berbeda, dan semuanya bisa diselesaikan
+• Menara bos setiap 10 level: lebih tinggi, lebih sulit, hadiah tiga kali
+• Peta dunia untuk mengikuti perjalananmu
+• Rintangan baru: kaca yang retak dan pecah, cincin yang menghilang, portal yang melompati dua lantai, cincin yang berputar
+• Koin melayang di sepanjang jalan
 
-★ KEKUATAN
-• Petunjuk: menunjukkan blok yang bisa keluar sekarang
-• Bekukan: menghentikan waktu selama 10 detik
-• Palu: menghancurkan blok mana pun
-• Gunting: memotong blok jadi dua
+★ TERJUN BEBAS
+• Mode tanpa akhir: seberapa dalam kamu bisa turun?
+• Pecahkan rekormu setiap permainan
 
-★ SETIAP HARI
-• Tantangan harian dengan rangkaian hari yang harus dijaga
-• Tiga misi harian dan peti harian yang bertambah selama 7 hari
-• Peta level dengan dunia, bintang, dan peti di sepanjang jalan
+★ SETIAP HARI ADA YANG BARU
+• Tantangan harian yang sama untuk semua
+• Roda keberuntungan harian
+• Tiga misi harian dan peti 7 hari
+• Lebih dari 20 pencapaian berhadiah
 
-★ DIBUAT AGAR MENYENANGKAN
-• Blok jeli 3D berkilau dan tampilan neon premium
-• Efek kaca pecah setiap kali blok keluar
-• 6 tema: Neon, Samudra, Permen, Lava, Galaksi, dan Emas
-• Musik santai, suara, dan getaran (semua opsional)
-• Bisa dimainkan tanpa internet
+★ TAMPILAN PREMIUM
+• 13 menara dengan dunianya sendiri: puncak bersalju, kota neon, gunung api, luar angkasa, gurun, kastil, dan lainnya
+• 23 bola, dari mutiara dan krom sampai Bumi, galaksi, dan permata
+• Jejak spesial: pelangi, bintang, api biru, dan debu emas
+• Partikel, gerak lambat di saat genting, musik untuk setiap tema
+• Ringan dan mulus, bisa dimainkan offline
 
-Gratis, dengan iklan. Tidak perlu akun.
+Gratis, dengan iklan. Tanpa akun.
 """,
-    captions=["Bawa blok ke gerbangnya", "Lihat mereka pecah jadi kaca", "Temukan urutan yang tepat",
-              "Kejutan baru di jalan", "Kekuatan saat dibutuhkan", "Tantangan harian dan peta", "6 tema cantik"],
+    captions=["Putar menara dan jatuh!", "Mode api hancurkan semua", "Menara bos tiap 10 level",
+              "Terjun bebas tanpa akhir", "13 menara, 23 bola", "Dunia yang menakjubkan", "Roda, misi, pencapaian"],
 )
 
 L["hi-IN"] = dict(
-    title="Prisma Tower: रंगीन ब्लॉक पज़ल",
-    short="जेली ब्लॉक को उनके रंग के गेट तक खिसकाएँ और उन्हें काँच की तरह टूटते देखें!",
-    full="""चमकदार जेली ब्लॉक को उसी रंग के गेट तक खिसकाएँ और उन्हें काँच की बारिश में टूटते देखें। Prisma Tower एक शानदार स्लाइडिंग पज़ल है: शुरू करना आसान, महारत पाना मुश्किल, और घड़ी चलती रहती है।
+    title="Prisma Tower: Helix 3D",
+    short="टावर घुमाएं, गेंद को नीचे उछालें और आग से रिंग तोड़ें!",
+    full="""उंगली से टावर घुमाएं और उछलती गेंद को रिंग-दर-रिंग नीचे सुनहरे लक्ष्य तक ले जाएं। लगातार 3 रिंग पार करें और गेंद में आग लग जाएगी, जो रास्ते की हर चीज़ तोड़ देगी! Prisma Tower एक तेज़, सुंदर और मज़ेदार 3D गेम है: शुरू करना आसान, छोड़ना मुश्किल।
 
-★ सोचने पर मजबूर करने वाली पज़ल
-• हर ब्लॉक को अपने गेट तक खाली रास्ता चाहिए: सही क्रम खोजें
-• एक समय में बस कुछ ही चालें संभव हैं: पहले से योजना बनाएँ
-• हर 10 लेवल पर एक मुश्किल लेवल, फिर थोड़ा आराम
-• अनंत लेवल, सब अलग, सबका हल मौजूद
+★ कैसे खेलें
+• टावर घुमाने के लिए खींचें
+• खाली जगहों से नीचे गिरें और लाल हिस्सों से बचें
+• बिना उछले लगातार 3 रिंग = आग मोड, जो लाल को भी तोड़ देता है
 
-★ रास्ते में नई चीज़ें
-• कभी न हिलने वाले पत्थर
-• जमे हुए ब्लॉक जो दूसरों के निकलने पर पिघलते हैं
-• तीर वाले एक-दिशा ब्लॉक
-• दो परत वाले ब्लॉक: खोल तोड़ें, नया रंग खोजें
-• चाबियाँ और ताले
-• समय के साथ खुलने और बंद होने वाले गेट
+★ अनगिनत लेवल
+• हर लेवल अलग है, और हर लेवल पार किया जा सकता है
+• हर 10 लेवल पर बॉस टावर: ज़्यादा ऊँचा, ज़्यादा कठिन, तीन गुना इनाम
+• अपनी यात्रा देखने के लिए दुनिया का नक्शा
+• नई बाधाएँ: चटकने और टूटने वाला कांच, गायब होने वाली रिंग, दो मंज़िल कुदाने वाले पोर्टल, घूमने वाली रिंग
+• रास्ते में तैरते सिक्के
 
-★ पावर-अप
-• संकेत: अभी निकल सकने वाला ब्लॉक दिखाता है
-• फ़्रीज़: घड़ी को 10 सेकंड रोकता है
-• हथौड़ा: कोई भी ब्लॉक तोड़ता है
-• कैंची: एक ब्लॉक को दो हिस्सों में काटती है
+★ फ्री फॉल
+• अंतहीन मोड: आप कितना नीचे जा सकते हैं?
+• हर बार अपना रिकॉर्ड तोड़ें
 
-★ हर दिन
-• रोज़ाना चुनौती और लगातार दिनों की स्ट्रीक
-• तीन रोज़ाना मिशन और 7 दिनों में बढ़ने वाला रोज़ाना खज़ाना
-• दुनियाओं, सितारों और रास्ते के खज़ानों वाला लेवल मैप
+★ हर दिन कुछ नया
+• सबके लिए एक जैसी दैनिक चुनौती
+• रोज़ का किस्मत का पहिया
+• रोज़ तीन मिशन और 7 दिन का खज़ाना
+• इनाम वाली 20 से ज़्यादा उपलब्धियाँ
 
-★ मज़ेदार बनाने के लिए
-• चमकदार 3D जेली ब्लॉक और प्रीमियम नियॉन लुक
-• हर ब्लॉक निकलने पर काँच टूटने का इफ़ेक्ट
-• 6 थीम: नियॉन, समुद्र, कैंडी, लावा, गैलेक्सी और सोना
-• सुकून भरा संगीत, आवाज़ें और वाइब्रेशन (सब वैकल्पिक)
-• बिना इंटरनेट के चलता है
+★ प्रीमियम लुक
+• अपनी दुनिया वाले 13 टावर: बर्फ़ीली चोटियाँ, नियॉन शहर, ज्वालामुखी, अंतरिक्ष, रेगिस्तान, महल और भी बहुत कुछ
+• मोती और क्रोम से लेकर पृथ्वी, आकाशगंगा और रत्न तक 23 गेंदें
+• खास ट्रेल: इंद्रधनुष, सितारे, नीली आग और सोने की धूल
+• पार्टिकल, खतरे के पलों में स्लो मोशन, हर थीम का संगीत
+• हल्का और स्मूथ, बिना इंटरनेट के चलता है
 
 मुफ़्त, विज्ञापनों के साथ। किसी अकाउंट की ज़रूरत नहीं।
 """,
-    captions=["हर ब्लॉक को उसके गेट तक", "उन्हें काँच की तरह टूटते देखें", "सही क्रम खोजें",
-              "रास्ते में नई चीज़ें", "ज़रूरत पर पावर-अप", "रोज़ाना चुनौती और मैप", "6 सुंदर थीम"],
+    captions=["टावर घुमाएं और गिरें!", "आग मोड सब तोड़ देता है", "हर 10 लेवल पर बॉस",
+              "अंतहीन फ्री फॉल", "13 टावर, 23 गेंदें", "शानदार दुनिया", "पहिया, मिशन, उपलब्धियाँ"],
 )
-
-# Emulator locale used for each listing's screenshots.
-APP_LOCALE = {"en-US": "en-US", "pt-BR": "pt-BR", "es-ES": "es-ES", "fr-FR": "fr-FR", "de-DE": "de-DE",
-              "tr-TR": "tr-TR", "id": "id-ID", "hi-IN": "hi-IN"}
 
 if __name__ == "__main__":
     for loc, t in L.items():

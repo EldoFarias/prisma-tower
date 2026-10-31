@@ -72,6 +72,7 @@ import com.farias.prismatower.R
 import com.farias.prismatower.ads.AdsManager
 import com.farias.prismatower.audio.Sfx
 import com.farias.prismatower.audio.SoundManager
+import com.farias.prismatower.data.Achievements
 import com.farias.prismatower.data.Progress
 import com.farias.prismatower.notify.DailyReminder
 import kotlinx.coroutines.delay
@@ -94,20 +95,26 @@ fun HomeScreen(
     onDaily: () -> Unit,
     onShop: () -> Unit,
     onStats: () -> Unit,
+    onMap: () -> Unit,
+    onEndless: () -> Unit,
 ) {
     val context = LocalContext.current
     var showSettings by remember { mutableStateOf(false) }
     var showMissions by remember { mutableStateOf(false) }
     var showChest by remember { mutableStateOf(false) }
+    var showRoulette by remember { mutableStateOf(false) }
+    var showAchievements by remember { mutableStateOf(false) }
 
     var backPressedAt by remember { mutableLongStateOf(0L) }
     var showExitHint by remember { mutableStateOf(false) }
     BackHandler {
         when {
-            showSettings || showMissions || showChest -> {
+            showSettings || showMissions || showChest || showRoulette || showAchievements -> {
                 showSettings = false
                 showMissions = false
                 showChest = false
+                showRoulette = false
+                showAchievements = false
             }
             SystemClock.uptimeMillis() - backPressedAt < EXIT_WINDOW_MS -> (context as? Activity)?.finish()
             else -> {
@@ -204,7 +211,9 @@ fun HomeScreen(
                     Text(stringResource(R.string.win_streak, Progress.winStreak), style = Styles.glow(17, Color(0xFFFB923C), FontWeight.Black))
                     Spacer(Modifier.height(10.dp))
                 }
-                PlayButton(stringResource(R.string.play_level, Progress.level)) {
+                WorldStrip(onMap)
+                Spacer(Modifier.height(10.dp))
+                PlayButton(stringResource(if (com.farias.prismatower.game.TowerLevels.isBoss(Progress.level)) R.string.play_boss else R.string.play_level, Progress.level)) {
                     sound.play(Sfx.WHOOSH, 0.7f)
                     onPlay()
                 }
@@ -226,6 +235,21 @@ fun HomeScreen(
                         ChestIcon(Modifier.size(28.dp), shaking = Progress.chestAvailable())
                     }
                 }
+                Spacer(Modifier.height(10.dp))
+                Row(horizontalArrangement = Arrangement.spacedBy(10.dp)) {
+                    HomeTile(stringResource(R.string.map_title), Modifier.weight(1f), 0, onMap) {
+                        MapIcon(Modifier.size(26.dp))
+                    }
+                    HomeTile(stringResource(R.string.endless), Modifier.weight(1f), 0, { sound.play(Sfx.WHOOSH, 0.7f); onEndless() }) {
+                        Text("∞", style = Styles.glow(26, Palette.Cyan, FontWeight.Black))
+                    }
+                    HomeTile(stringResource(R.string.roulette), Modifier.weight(1f), if (Progress.rouletteFreeAvailable()) 1 else 0, { showRoulette = true }) {
+                        WheelIcon(Modifier.size(26.dp))
+                    }
+                    HomeTile(stringResource(R.string.achievements), Modifier.weight(1f), Achievements.claimable(), { showAchievements = true }) {
+                        TrophyIcon(Modifier.size(26.dp))
+                    }
+                }
             }
             Spacer(Modifier.height(12.dp))
             BannerAd(ads)
@@ -234,6 +258,8 @@ fun HomeScreen(
         if (showSettings) SettingsDialog(ads, ::setNotifications) { showSettings = false }
         if (showMissions) MissionsDialog(sound) { showMissions = false }
         if (showChest) ChestDialog(ads, sound) { showChest = false }
+        if (showRoulette) RouletteDialog(ads, sound) { showRoulette = false }
+        if (showAchievements) AchievementsDialog(sound) { showAchievements = false }
 
         AnimatedVisibility(
             visible = showExitHint,
@@ -332,7 +358,7 @@ private fun PlayButton(text: String, onClick: () -> Unit) {
 }
 
 @Composable
-private fun HomeTile(label: String, modifier: Modifier, badge: Int, onClick: () -> Unit, height: Dp = 78.dp, icon: @Composable () -> Unit) {
+private fun HomeTile(label: String, modifier: Modifier, badge: Int, onClick: () -> Unit, height: Dp = 70.dp, icon: @Composable () -> Unit) {
     val shape = RoundedCornerShape(18.dp)
     Box(modifier) {
         Column(
@@ -399,5 +425,69 @@ fun TrophyIcon(modifier: Modifier) {
         drawArc(Palette.Gold, -90f, 180f, false, Offset(w * 0.70f, h * 0.14f), Size(w * 0.26f, h * 0.26f), style = stroke)
         drawRect(Palette.Gold, Offset(w * 0.44f, h * 0.6f), Size(w * 0.12f, h * 0.18f))
         drawRoundRect(gold, Offset(w * 0.26f, h * 0.78f), Size(w * 0.48f, h * 0.14f), CornerRadius(w * 0.04f))
+    }
+}
+
+/** "World 3 · 4/10" with ten little steps and the boss crown; opens the map. */
+@Composable
+private fun WorldStrip(onMap: () -> Unit) {
+    val lv = Progress.level
+    val world = (lv - 1) / 10 + 1
+    val step = (lv - 1) % 10
+    val theme = Palette.theme
+    Row(
+        Modifier
+            .clip(RoundedCornerShape(50))
+            .background(Color(0x66100A26))
+            .border(1.dp, Palette.GlassBorder, RoundedCornerShape(50))
+            .clickable(onClick = onMap)
+            .padding(horizontal = 14.dp, vertical = 8.dp),
+        verticalAlignment = Alignment.CenterVertically,
+    ) {
+        Text(stringResource(R.string.world_x, world), style = Styles.plain(14, Color.White, FontWeight.ExtraBold))
+        Spacer(Modifier.width(10.dp))
+        for (k in 0 until 10) {
+            val boss = k == 9
+            Box(
+                Modifier
+                    .padding(horizontal = 2.dp)
+                    .size(if (boss) 14.dp else 9.dp)
+                    .clip(CircleShape)
+                    .background(
+                        when {
+                            k < step -> theme.accent
+                            k == step -> Color.White
+                            else -> Color(0x33FFFFFF)
+                        },
+                    ),
+            )
+        }
+        Spacer(Modifier.width(4.dp))
+        CrownIcon(Modifier.size(18.dp, 13.dp))
+    }
+}
+
+@Composable
+private fun MapIcon(modifier: Modifier) {
+    Canvas(modifier) {
+        val w = size.width; val h = size.height
+        val p = Path().apply { moveTo(w * 0.05f, h * 0.2f); lineTo(w * 0.35f, h * 0.08f); lineTo(w * 0.65f, h * 0.2f); lineTo(w * 0.95f, h * 0.08f)
+            lineTo(w * 0.95f, h * 0.8f); lineTo(w * 0.65f, h * 0.92f); lineTo(w * 0.35f, h * 0.8f); lineTo(w * 0.05f, h * 0.92f); close() }
+        drawPath(p, Brush.verticalGradient(listOf(Color(0xFFFDE68A), Color(0xFFF59E0B))))
+        drawLine(Color(0xFFB45309), Offset(w * 0.35f, h * 0.08f), Offset(w * 0.35f, h * 0.8f), w * 0.04f)
+        drawLine(Color(0xFFB45309), Offset(w * 0.65f, h * 0.2f), Offset(w * 0.65f, h * 0.92f), w * 0.04f)
+        drawCircle(Color(0xFFDC2626), w * 0.08f, Offset(w * 0.5f, h * 0.45f))
+    }
+}
+
+@Composable
+private fun WheelIcon(modifier: Modifier) {
+    Canvas(modifier) {
+        val c = Offset(size.width / 2f, size.height / 2f)
+        val r = size.minDimension / 2f
+        val cols = listOf(Color(0xFF22D3EE), Color(0xFF8B5CF6), Color(0xFFF472B6), Color(0xFFF59E0B), Color(0xFF34D399), Color(0xFFE11D48))
+        for (i in cols.indices) drawArc(cols[i], i * 60f, 60f, true, Offset(c.x - r, c.y - r), Size(r * 2, r * 2))
+        drawCircle(Color.White, r * 0.18f, c)
+        drawCircle(Color.White, r, c, style = androidx.compose.ui.graphics.drawscope.Stroke(r * 0.1f))
     }
 }
