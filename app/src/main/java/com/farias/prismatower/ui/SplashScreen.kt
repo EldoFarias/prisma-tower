@@ -71,7 +71,7 @@ private const val LOGO = FLASH + 0.12f
 private const val END = 4.3f
 
 private class Shard(val ring: Int, val a: Float, val vx: Float, val vy: Float, val spin: Float, val size: Float, val bright: Boolean)
-private class Star(val x: Float, val y: Float, val r: Float, val ph: Float)
+private class SplashStar(val x: Float, val y: Float, val r: Float, val ph: Float)
 
 /** easeOutBack-like landing with a little overshoot. */
 private fun land(t: Float): Float {
@@ -102,7 +102,7 @@ fun SplashScreen(sound: SoundManager, onFinish: () -> Unit) {
             Shard(ring, a, cos(a) * (0.35f + rnd.nextFloat() * 0.8f), -(0.25f + rnd.nextFloat() * 0.7f), (rnd.nextFloat() - 0.5f) * 900f, 0.012f + rnd.nextFloat() * 0.022f, rnd.nextFloat() < 0.25f)
         }
     }
-    val stars = remember { Random(3).let { r -> List(80) { Star(r.nextFloat(), r.nextFloat(), 0.6f + r.nextFloat() * 1.6f, r.nextFloat() * 6.28f) } } }
+    val stars = remember { Random(3).let { r -> List(80) { SplashStar(r.nextFloat(), r.nextFloat(), 0.6f + r.nextFloat() * 1.6f, r.nextFloat() * 6.28f) } } }
     val sparks = remember { Random(11).let { r -> List(70) { floatArrayOf(r.nextFloat() * 6.28f, 0.3f + r.nextFloat(), r.nextFloat()) } } }
 
     fun finish() {
@@ -199,7 +199,7 @@ fun SplashScreen(sound: SoundManager, onFinish: () -> Unit) {
     }
 }
 
-private fun DrawScope.drawSplash(t: Float, shards: List<Shard>, stars: List<Star>, sparks: List<FloatArray>) {
+private fun DrawScope.drawSplash(t: Float, shards: List<Shard>, stars: List<SplashStar>, sparks: List<FloatArray>) {
     val w = size.width
     val h = size.height
     if (w < 2f || h < 2f) return
