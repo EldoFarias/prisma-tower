@@ -53,7 +53,7 @@ fun StatsScreen(onBack: () -> Unit) {
         Column(
             Modifier
                 .fillMaxSize()
-                .systemBarsPadding(),
+                .safeBars(),
         ) {
             Row(
                 modifier = Modifier

@@ -111,7 +111,7 @@ fun ShopScreen(host: GameHost, ads: AdsManager, sound: SoundManager, onBack: () 
                 Modifier
                     .fillMaxWidth()
                     .background(Color(0xFF130C30))
-                    .statusBarsPadding()
+                    .safeTop()
                     .padding(horizontal = 16.dp, vertical = 8.dp),
                 verticalAlignment = Alignment.CenterVertically,
             ) {

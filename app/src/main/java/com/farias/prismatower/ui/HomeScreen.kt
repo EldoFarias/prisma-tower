@@ -179,7 +179,7 @@ fun HomeScreen(
         Column(
             Modifier
                 .fillMaxSize()
-                .systemBarsPadding(),
+                .safeBars(),
             horizontalAlignment = Alignment.CenterHorizontally,
         ) {
             Row(
@@ -267,7 +267,7 @@ fun HomeScreen(
             exit = fadeOut(),
             modifier = Modifier
                 .align(Alignment.BottomCenter)
-                .systemBarsPadding()
+                .safeBars()
                 .padding(bottom = 96.dp, start = 24.dp, end = 24.dp),
         ) {
             Text(

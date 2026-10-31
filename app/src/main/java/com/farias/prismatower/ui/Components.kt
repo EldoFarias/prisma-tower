@@ -13,6 +13,12 @@ import androidx.compose.foundation.layout.BoxScope
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.widthIn
+import androidx.compose.foundation.layout.systemBars
+import androidx.compose.foundation.layout.only
+import androidx.compose.foundation.layout.union
+import androidx.compose.foundation.layout.displayCutout
+import androidx.compose.foundation.layout.statusBars
+import androidx.compose.foundation.layout.windowInsetsPadding
 import androidx.compose.foundation.layout.heightIn
 import androidx.compose.foundation.layout.systemBarsPadding
 import androidx.compose.foundation.rememberScrollState
@@ -86,6 +92,21 @@ object Styles {
         fontWeight = weight,
     )
 }
+
+/** Top padding that keeps clear of the status bar (if shown) and the camera notch. */
+@Composable
+fun Modifier.safeTop(): Modifier = this.windowInsetsPadding(
+    androidx.compose.foundation.layout.WindowInsets.statusBars
+        .union(androidx.compose.foundation.layout.WindowInsets.displayCutout)
+        .only(androidx.compose.foundation.layout.WindowInsetsSides.Top),
+)
+
+/** Padding for system bars (if shown) and the camera notch on every side. */
+@Composable
+fun Modifier.safeBars(): Modifier = this.windowInsetsPadding(
+    androidx.compose.foundation.layout.WindowInsets.systemBars
+        .union(androidx.compose.foundation.layout.WindowInsets.displayCutout),
+)
 
 /** Swallows touches so nothing behind an overlay reacts. */
 fun Modifier.blockTouches(): Modifier = this.clickable(
@@ -280,7 +301,7 @@ fun DimOverlay(content: @Composable () -> Unit) {
             .fillMaxSize()
             .background(Color(0xCC05040F))
             .blockTouches()
-            .systemBarsPadding(),
+            .safeBars(),
     ) {
         // Centered when it fits; scrolls on short screens instead of being cut off.
         androidx.compose.foundation.layout.Column(

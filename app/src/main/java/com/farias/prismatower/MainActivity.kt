@@ -112,11 +112,6 @@ class MainActivity : ComponentActivity() {
                                 },
                             )
                             Screen.GAME -> {
-                                // Full screen while playing: hide the status bar (swipe down shows it for a moment).
-                                androidx.compose.runtime.DisposableEffect(Unit) {
-                                    setGameFullScreen(true)
-                                    onDispose { setGameFullScreen(false) }
-                                }
                                 GameScreen(
                                 host = host,
                                 ads = ads,
@@ -204,6 +199,8 @@ class MainActivity : ComponentActivity() {
 
     override fun onResume() {
         super.onResume()
+        // The whole game runs full screen (swipe down shows the status bar for a moment).
+        setGameFullScreen(true)
         Progress.ensureMissionDay()
         MusicPlayer.onResume()
         host.view?.onResume()

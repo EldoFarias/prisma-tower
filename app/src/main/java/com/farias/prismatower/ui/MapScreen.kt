@@ -57,7 +57,7 @@ fun MapScreen(onBack: () -> Unit, onPlay: (Int) -> Unit) {
             Row(
                 Modifier
                     .fillMaxWidth()
-                    .statusBarsPadding()
+                    .safeTop()
                     .padding(horizontal = 16.dp, vertical = 8.dp),
                 verticalAlignment = Alignment.CenterVertically,
             ) {
