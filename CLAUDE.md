@@ -54,6 +54,13 @@ O `TowerView` (GLSurfaceView com MSAA 4×) fica atrás de todas as telas; no men
 - Sons: `python3 tools/make_sfx.py app/src/main/res/raw`.
 - Gradientes radiais com raio 0 derrubam o app: proteger tamanhos < 1 px.
 - Em tablet o app inteiro é desenhado maior (`Scaled` no MainActivity).
+- **Desempenho é prioridade (o Eldo quer o jogo extremamente leve):** nada de alocar objetos no laço de desenho
+  (use os arrays de rascunho do `TowerRenderer`); fatias dos anéis e halos são desenhados com instancing; o céu
+  detalhado é desenhado em 1/3 da resolução a cada 2 quadros (fundo pesado em resolução cheia travou o jogo);
+  "Cenário detalhado" nas configurações e desligamento automático se os quadros ficarem lentos; GL limitado a
+  1080 px de largura; GL pausado na splash e nas estatísticas; fases pré-geradas em segundo plano (`LevelCache`);
+  animações do Compose leem o tempo só dentro de `graphicsLayer`/`drawWithContent` (sem recompor a cada quadro).
+- Shaders: validar com glslangValidator antes de enviar (npm `glslang-validator-prebuilt-predownloaded`).
 
 ## Forma de trabalho
 
