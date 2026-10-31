@@ -26,11 +26,21 @@ fun TowerView(host: GameHost, modifier: Modifier = Modifier) {
                 })
                 host.view = this
                 host.applyRenderMode()
+                // Phones with 1440p screens draw 78% more pixels than 1080p for no visible gain on a
+                // moving 3D scene: cap the drawing size at 1080 px wide; the system scales it up.
+                addOnLayoutChangeListener { v, l, t, r, b, _, _, _, _ ->
+                    val w = r - l
+                    val h = b - t
+                    if (w > MAX_WIDTH && h > 0) holder.setFixedSize(MAX_WIDTH, (h.toLong() * MAX_WIDTH / w).toInt())
+                    else if (w > 0) holder.setSizeFromLayout()
+                }
             }
         },
         onRelease = { if (host.view === it) host.view = null },
     )
 }
+
+private const val MAX_WIDTH = 1080
 
 /** Picks a 4× multisampled RGBA8888 + depth config when the GPU has one (smooth ring edges), else plain. */
 private class MsaaChooser : GLSurfaceView.EGLConfigChooser {

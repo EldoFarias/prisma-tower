@@ -10,19 +10,30 @@ import kotlin.math.cos
 import kotlin.math.sin
 import kotlin.math.sqrt
 
-/** Interleaved vertex data: position (3), normal (3), uv (2). */
+/** Interleaved vertex data: position (3), normal (3), uv (2). Primitive arrays, no boxing. */
 class MeshData {
-    val v = ArrayList<Float>(4096)
-    val i = ArrayList<Int>(4096)
-    val count get() = v.size / 8
+    var v = FloatArray(8 * 1024)
+        private set
+    var i = IntArray(3 * 1024)
+        private set
+    var vSize = 0
+        private set
+    var iSize = 0
+        private set
+    val count get() = vSize / 8
 
     fun vert(x: Float, y: Float, z: Float, nx: Float, ny: Float, nz: Float, u: Float = 0f, w: Float = 0f): Int {
-        v.add(x); v.add(y); v.add(z); v.add(nx); v.add(ny); v.add(nz); v.add(u); v.add(w)
+        if (vSize + 8 > v.size) v = v.copyOf(v.size * 2)
+        val a = v
+        var k = vSize
+        a[k++] = x; a[k++] = y; a[k++] = z; a[k++] = nx; a[k++] = ny; a[k++] = nz; a[k++] = u; a[k++] = w
+        vSize = k
         return count - 1
     }
 
     fun tri(a: Int, b: Int, c: Int) {
-        i.add(a); i.add(b); i.add(c)
+        if (iSize + 3 > i.size) i = i.copyOf(i.size * 2)
+        i[iSize++] = a; i[iSize++] = b; i[iSize++] = c
     }
 
     fun quad(a: Int, b: Int, c: Int, d: Int) {
@@ -34,22 +45,20 @@ class MeshData {
 class Mesh(data: MeshData) {
     private val vao = IntArray(1)
     private val bufs = IntArray(2)
-    private val indexCount = data.i.size
+    private val indexCount = data.iSize
 
     init {
-        val vb: FloatBuffer = ByteBuffer.allocateDirect(data.v.size * 4).order(ByteOrder.nativeOrder()).asFloatBuffer()
-        data.v.forEach { vb.put(it) }
-        vb.position(0)
-        val ib: IntBuffer = ByteBuffer.allocateDirect(data.i.size * 4).order(ByteOrder.nativeOrder()).asIntBuffer()
-        data.i.forEach { ib.put(it) }
-        ib.position(0)
+        val vb: FloatBuffer = ByteBuffer.allocateDirect(data.vSize * 4).order(ByteOrder.nativeOrder()).asFloatBuffer()
+        vb.put(data.v, 0, data.vSize).position(0)
+        val ib: IntBuffer = ByteBuffer.allocateDirect(data.iSize * 4).order(ByteOrder.nativeOrder()).asIntBuffer()
+        ib.put(data.i, 0, data.iSize).position(0)
         GLES30.glGenVertexArrays(1, vao, 0)
         GLES30.glBindVertexArray(vao[0])
         GLES30.glGenBuffers(2, bufs, 0)
         GLES30.glBindBuffer(GLES30.GL_ARRAY_BUFFER, bufs[0])
-        GLES30.glBufferData(GLES30.GL_ARRAY_BUFFER, data.v.size * 4, vb, GLES30.GL_STATIC_DRAW)
+        GLES30.glBufferData(GLES30.GL_ARRAY_BUFFER, data.vSize * 4, vb, GLES30.GL_STATIC_DRAW)
         GLES30.glBindBuffer(GLES30.GL_ELEMENT_ARRAY_BUFFER, bufs[1])
-        GLES30.glBufferData(GLES30.GL_ELEMENT_ARRAY_BUFFER, data.i.size * 4, ib, GLES30.GL_STATIC_DRAW)
+        GLES30.glBufferData(GLES30.GL_ELEMENT_ARRAY_BUFFER, data.iSize * 4, ib, GLES30.GL_STATIC_DRAW)
         val stride = 8 * 4
         GLES30.glEnableVertexAttribArray(0)
         GLES30.glVertexAttribPointer(0, 3, GLES30.GL_FLOAT, false, stride, 0)
@@ -63,6 +72,33 @@ class Mesh(data: MeshData) {
     fun draw() {
         GLES30.glBindVertexArray(vao[0])
         GLES30.glDrawElements(GLES30.GL_TRIANGLES, indexCount, GLES30.GL_UNSIGNED_INT, 0)
+    }
+
+    /**
+     * Points attributes 3 (vec4: angle, y, scaleXZ, scaleY) and 4 (vec3 colour) at [instVbo], starting at
+     * instance [first], one value per instance. Lets one draw call place many copies of this mesh.
+     */
+    fun bindInstances(instVbo: Int, first: Int) {
+        GLES30.glBindVertexArray(vao[0])
+        GLES30.glBindBuffer(GLES30.GL_ARRAY_BUFFER, instVbo)
+        val stride = INST_FLOATS * 4
+        val base = first * stride
+        GLES30.glEnableVertexAttribArray(3)
+        GLES30.glVertexAttribPointer(3, 4, GLES30.GL_FLOAT, false, stride, base)
+        GLES30.glVertexAttribDivisor(3, 1)
+        GLES30.glEnableVertexAttribArray(4)
+        GLES30.glVertexAttribPointer(4, 3, GLES30.GL_FLOAT, false, stride, base + 16)
+        GLES30.glVertexAttribDivisor(4, 1)
+    }
+
+    fun drawInstanced(count: Int) {
+        if (count <= 0) return
+        GLES30.glBindVertexArray(vao[0])
+        GLES30.glDrawElementsInstanced(GLES30.GL_TRIANGLES, indexCount, GLES30.GL_UNSIGNED_INT, 0, count)
+    }
+
+    companion object {
+        const val INST_FLOATS = 7
     }
 }
 

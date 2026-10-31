@@ -38,6 +38,7 @@ import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.key
 import androidx.compose.runtime.mutableLongStateOf
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
@@ -210,38 +211,50 @@ private fun ScoreText(host: GameHost) {
 
 @Composable
 private fun PopupLayer(host: GameHost) {
-    var now by remember { mutableLongStateOf(SystemClock.uptimeMillis()) }
-    LaunchedEffect(Unit) {
-        while (true) withFrameMillis { now = SystemClock.uptimeMillis() }
+    // The clock ticks only while there are texts on screen, and is read only in the layer/offset blocks:
+    // the texts move every frame without recomposing anything.
+    val now = remember { mutableLongStateOf(SystemClock.uptimeMillis()) }
+    val any = host.popups.isNotEmpty()
+    LaunchedEffect(any) {
+        while (any) {
+            withFrameMillis { now.longValue = SystemClock.uptimeMillis() }
+            if (host.popups.all { now.longValue - it.born > 1150 }) {
+                host.popups.clear()
+                break
+            }
+        }
     }
     val density = LocalDensity.current
+    val rise60 = with(density) { 60.dp.toPx() }
     BoxWithConstraints(Modifier.fillMaxSize()) {
         val w = constraints.maxWidth
         val h = constraints.maxHeight
         for (p in host.popups) {
-            val age = (now - p.born) / 1000f
-            if (age > 1.1f) continue
-            val rise = with(density) { (60.dp * age).toPx() }
-            val alpha = (1f - ((age - 0.6f) / 0.5f)).coerceIn(0f, 1f)
-            val pop = if (age < 0.15f) 0.6f + age / 0.15f * 0.6f else 1.2f - ((age - 0.15f) * 0.4f).coerceAtMost(0.2f)
-            val (color, size) = when (p.kind) {
-                1 -> Palette.theme.accent to 30
-                2 -> Palette.Gold to 26
-                3 -> Color(0xFFFF8A2B) to 34
-                4 -> Color.White to 40
-                else -> Color.White to 24
+            key(p.id) {
+                val (color, size) = when (p.kind) {
+                    1 -> Palette.theme.accent to 30
+                    2 -> Palette.Gold to 26
+                    3 -> Color(0xFFFF8A2B) to 34
+                    4 -> Color.White to 40
+                    else -> Color.White to 24
+                }
+                Text(
+                    p.text,
+                    style = Styles.glow(size, color, FontWeight.Black),
+                    modifier = Modifier
+                        .offset {
+                            val age = (now.longValue - p.born) / 1000f
+                            IntOffset((p.x * w).roundToInt() + 60, (p.y * h - rise60 * age).roundToInt() - 90)
+                        }
+                        .graphicsLayer {
+                            val age = (now.longValue - p.born) / 1000f
+                            alpha = (1f - ((age - 0.6f) / 0.5f)).coerceIn(0f, 1f)
+                            val pop = if (age < 0.15f) 0.6f + age / 0.15f * 0.6f else 1.2f - ((age - 0.15f) * 0.4f).coerceAtMost(0.2f)
+                            scaleX = pop
+                            scaleY = pop
+                        },
+                )
             }
-            Text(
-                p.text,
-                style = Styles.glow(size, color, FontWeight.Black),
-                modifier = Modifier
-                    .offset { IntOffset((p.x * w).roundToInt() + 60, (p.y * h - rise).roundToInt() - 90) }
-                    .graphicsLayer {
-                        this.alpha = alpha
-                        scaleX = pop
-                        scaleY = pop
-                    },
-            )
         }
     }
 }

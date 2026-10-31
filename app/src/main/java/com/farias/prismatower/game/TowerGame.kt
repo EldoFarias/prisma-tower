@@ -33,7 +33,7 @@ class TowerGame(private val callbacks: Callbacks) {
 
     var mode = Mode.ATTRACT
         private set
-    var sim = TowerSim(TowerLevels.level(3))
+    var sim = TowerSim(LevelCache.get(3))
         private set
     var tower: TowerLook = Looks.towers[0]
     var ball: BallLook = Looks.balls[0]
@@ -56,8 +56,18 @@ class TowerGame(private val callbacks: Callbacks) {
     val splats = ArrayList<Splat>()
     val breaks = ArrayList<Break>()
     val particles = Particles(1600)
-    /** Recent ball heights for the comet trail (newest last). */
-    val trail = ArrayDeque<Float>()
+    /** Recent ball heights for the comet trail: a ring buffer, oldest first via [trailAt]. */
+    private val trailBuf = FloatArray(TRAIL)
+    var trailCount = 0
+        private set
+    private var trailHead = 0
+    fun trailAt(i: Int): Float = trailBuf[(trailHead - trailCount + i + TRAIL * 2) % TRAIL]
+
+    /** Ball squash & stretch, updated every frame. */
+    var ballSy = 1f
+        private set
+    var ballSxz = 1f
+        private set
 
     /** Ball position on screen (0..1), for floating texts. */
     @Volatile var ballScreenX = 0.5f
@@ -76,7 +86,11 @@ class TowerGame(private val callbacks: Callbacks) {
 
     fun startAttract() {
         mode = Mode.ATTRACT
-        begin(TowerLevels.level(3 + rnd.nextInt(30)))
+        // Use a level that is already built (never stall the menu), and get the next ones ready.
+        val pick = 3 + rnd.nextInt(30)
+        val lv = LevelCache.ready(pick) ?: (3..33).firstNotNullOfOrNull { LevelCache.ready(it) } ?: LevelCache.get(3)
+        begin(lv)
+        LevelCache.prefetch(3 + rnd.nextInt(30))
     }
 
     fun startPlay(level: TowerLevel) {
@@ -90,7 +104,7 @@ class TowerGame(private val callbacks: Callbacks) {
         splats.clear()
         breaks.clear()
         particles.clear()
-        trail.clear()
+        trailCount = 0
         deathTime = -1f
         winTime = -1f
         sinceBounce = 9f
@@ -147,13 +161,18 @@ class TowerGame(private val callbacks: Callbacks) {
         shake *= exp(-dt * 9f)
 
         // Trail
-        trail.addLast(sim.ballY)
-        while (trail.size > 14) trail.removeFirst()
+        trailBuf[trailHead] = sim.ballY
+        trailHead = (trailHead + 1) % TRAIL
+        if (trailCount < TRAIL) trailCount++
+        updateBallScale()
         if (sim.onFire && !sim.dead) emitFire()
         emitAmbient(dt)
         particles.update(dt)
-        splats.removeAll { it.ring < sim.next - 1 || clock - it.born > 6f }
-        breaks.removeAll { clock - it.born > 1.2f }
+        for (i in splats.indices.reversed()) {
+            val sp = splats[i]
+            if (sp.ring < sim.next - 1 || clock - sp.born > 6f) splats.removeAt(i)
+        }
+        for (i in breaks.indices.reversed()) if (clock - breaks[i].born > 1.2f) breaks.removeAt(i)
         callbacks.onFrame(this)
     }
 
@@ -285,24 +304,27 @@ class TowerGame(private val callbacks: Callbacks) {
     }
 
     /** Ring colour: a soft gradient down the tower between the theme's two colours. */
-    fun ringColor(ring: Int): FloatArray {
+    fun ringColor(ring: Int): FloatArray = ringColor(ring, FloatArray(3))
+
+    /** Same, written into [out] (no allocation). */
+    fun ringColor(ring: Int, out: FloatArray): FloatArray {
         val t = 0.5f + 0.5f * sin(ring * 0.55f)
         val a = tower.ringA
         val b = tower.ringB
-        return floatArrayOf(a[0] + (b[0] - a[0]) * t, a[1] + (b[1] - a[1]) * t, a[2] + (b[2] - a[2]) * t)
+        out[0] = a[0] + (b[0] - a[0]) * t; out[1] = a[1] + (b[1] - a[1]) * t; out[2] = a[2] + (b[2] - a[2]) * t
+        return out
     }
 
-    /** Ball squash & stretch: (sy, sxz). */
-    fun ballScale(): Pair<Float, Float> {
+    private fun updateBallScale() {
         val t = sinceBounce
         val squash = 0.32f * exp(-t * 13f) * cos(t * 28f)
         val stretch = (-sim.vy / Tower.MAX_FALL_V).coerceIn(0f, 1f) * 0.18f
-        val sy = 1f - squash + stretch
-        val sxz = 1f + squash * 0.6f - stretch * 0.45f
-        return sy to sxz
+        ballSy = 1f - squash + stretch
+        ballSxz = 1f + squash * 0.6f - stretch * 0.45f
     }
 
     companion object {
+        const val TRAIL = 14
         val TWO_PI = (2 * PI).toFloat()
     }
 }
@@ -322,7 +344,7 @@ class Particles(val max: Int) {
         x: Float, y: Float, z: Float, vx0: Float, vy0: Float, vz0: Float,
         cr: Float, cg: Float, cb: Float, ca: Float, s: Float, l: Float, gravity: Float,
     ) {
-        val i = if (count < max) count++ else (0 until max).random()
+        val i = if (count < max) count++ else kotlin.random.Random.nextInt(max)
         px[i] = x; py[i] = y; pz[i] = z
         vx[i] = vx0; vy[i] = vy0; vz[i] = vz0
         r[i] = cr; g[i] = cg; b[i] = cb; a[i] = ca

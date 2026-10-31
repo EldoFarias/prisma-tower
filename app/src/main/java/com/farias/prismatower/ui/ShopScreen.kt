@@ -369,22 +369,33 @@ private fun ItemCard(
     val shape = RoundedCornerShape(18.dp)
     val rc = rarityColor(rarity)
     val legendary = rarity == Rarity.LEGENDARY
-    val t = rememberInfiniteTransition(label = "card")
-    val glow by t.animateFloat(0.35f, 0.9f, infiniteRepeatable(tween(1100), RepeatMode.Reverse), label = "glow")
+    // Only legendary cards pulse, and the pulse is drawn (not recomposed).
+    val glow = if (legendary && !selected && !inUse) {
+        rememberInfiniteTransition(label = "card").animateFloat(0.35f, 0.95f, infiniteRepeatable(tween(1100), RepeatMode.Reverse), label = "glow")
+    } else null
+    val borderColor = when {
+        selected -> Color.White
+        inUse -> Color(0xFF34D399)
+        else -> rc.copy(alpha = 0.55f)
+    }
     Column(
         modifier
             .clip(shape)
             .background(Brush.verticalGradient(listOf(rc.copy(alpha = if (selected) 0.32f else 0.16f), Color(0x10FFFFFF))))
-            .border(
-                if (selected) 2.5.dp else 1.5.dp,
-                when {
-                    selected -> Color.White
-                    inUse -> Color(0xFF34D399)
-                    legendary -> rc.copy(alpha = glow)
-                    else -> rc.copy(alpha = 0.55f)
-                },
-                shape,
-            )
+            .border(if (selected) 2.5.dp else 1.5.dp, borderColor, shape)
+            .drawWithContent {
+                drawContent()
+                if (glow != null) {
+                    val sw = 2.5.dp.toPx()
+                    drawRoundRect(
+                        rc.copy(alpha = glow.value),
+                        topLeft = Offset(sw / 2, sw / 2),
+                        size = Size(size.width - sw, size.height - sw),
+                        cornerRadius = CornerRadius(18.dp.toPx()),
+                        style = androidx.compose.ui.graphics.drawscope.Stroke(sw),
+                    )
+                }
+            }
             .clickable(onClick = onClick)
             .padding(8.dp),
         horizontalAlignment = Alignment.CenterHorizontally,

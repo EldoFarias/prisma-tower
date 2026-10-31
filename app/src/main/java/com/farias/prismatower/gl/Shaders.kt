@@ -9,18 +9,31 @@ object Shaders {
 layout(location=0) in vec3 aPos;
 layout(location=1) in vec3 aNormal;
 layout(location=2) in vec2 aUv;
+layout(location=3) in vec4 aInst;      // instanced slices: angle, y, scale xz, scale y
+layout(location=4) in vec3 aInstColor;
 uniform mat4 uVP;
 uniform mat4 uModel;
+uniform int uInst;
 out vec3 vWorld;
 out vec3 vNormal;
 out vec3 vLocal;
 out vec2 vUv;
+out vec3 vInstColor;
 void main() {
-    vec4 w = uModel * vec4(aPos, 1.0);
+    vec4 w;
+    if (uInst == 1) {
+        float c = cos(aInst.x); float s = sin(aInst.x);
+        vec3 p = aPos * vec3(aInst.z, aInst.w, aInst.z);
+        w = vec4(c * p.x + s * p.z, p.y + aInst.y, -s * p.x + c * p.z, 1.0);
+        vNormal = vec3(c * aNormal.x + s * aNormal.z, aNormal.y, -s * aNormal.x + c * aNormal.z);
+    } else {
+        w = uModel * vec4(aPos, 1.0);
+        vNormal = mat3(uModel) * aNormal;
+    }
     vWorld = w.xyz;
-    vNormal = mat3(uModel) * aNormal;
     vLocal = aPos;
     vUv = aUv;
+    vInstColor = aInstColor;
     gl_Position = uVP * w;
 }
 """
@@ -36,6 +49,8 @@ in vec3 vWorld;
 in vec3 vNormal;
 in vec3 vLocal;
 in vec2 vUv;
+in vec3 vInstColor;
+uniform int uInst;
 uniform vec3 uCam;
 uniform vec3 uLight;
 uniform vec3 uColor;
@@ -118,7 +133,7 @@ vec3 rock(vec3 rockCol, vec3 topCol, float a, float yb, inout vec3 N) {
 void main() {
     vec3 N = normalize(vNormal);
     vec3 V = normalize(uCam - vWorld);
-    vec3 base = uColor;
+    vec3 base = (uInst == 1) ? vInstColor : uColor;
     vec3 emis = uEmissive;
     float gloss = uGloss;
     float metal = uMetal;

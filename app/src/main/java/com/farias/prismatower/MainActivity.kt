@@ -51,6 +51,9 @@ class MainActivity : ComponentActivity() {
         ads.start()
         val sound = SoundManager.get(this)
         MusicPlayer.init(this)
+        // Build the player's next level (and a few for the menu demo) in the background right away.
+        com.farias.prismatower.game.LevelCache.prefetch(Progress.level)
+        for (n in listOf(5, 9, 14, 21)) com.farias.prismatower.game.LevelCache.prefetch(n)
         host = GameHost(this)
         host.showMenu()
 
@@ -103,7 +106,14 @@ class MainActivity : ComponentActivity() {
                                 onHome = { go(Screen.HOME) },
                             )
                             Screen.SHOP -> ShopScreen(host, ads, sound) { go(Screen.HOME) }
-                            Screen.STATS -> StatsScreen { go(Screen.HOME) }
+                            Screen.STATS -> {
+                                // The statistics screen covers the 3D view completely: don't draw it.
+                                androidx.compose.runtime.DisposableEffect(Unit) {
+                                    host.renderPaused = true
+                                    onDispose { host.renderPaused = false }
+                                }
+                                StatsScreen { go(Screen.HOME) }
+                            }
                         }
                     }
                 }

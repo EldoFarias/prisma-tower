@@ -77,6 +77,48 @@ class TowerRenderer(private val game: TowerGame) : GLSurfaceView.Renderer {
     private lateinit var ptBuf: FloatBuffer
     private val ptCapacity = 2200
 
+    // Instanced ring slices: one draw call for all solid slices, one for danger, one for halos.
+    private val instVbo = IntArray(1)
+    private val instMax = 3 * 12 * 12
+    private val inst = FloatArray(instMax * Mesh.INST_FLOATS)
+    private lateinit var instBuf: FloatBuffer
+    private val ptScratch = FloatArray(2200 * 8)
+
+    // Scratch colours (no allocations while drawing)
+    private val rc = FloatArray(3)
+    private val fireEmis = FloatArray(3)
+    private val grayA = FloatArray(3)
+    private val grayB = FloatArray(3)
+    private val smashEmis = FloatArray(3)
+    private val cloudA = FloatArray(3)
+    private val cloudB = FloatArray(3)
+    private val gold = floatArrayOf(1f, 0.78f, 0.25f)
+    private val goldHalo = floatArrayOf(1f, 0.75f, 0.2f)
+    private val smashTint = floatArrayOf(1f, 0.5f, 0.1f)
+    private val fireTrail = floatArrayOf(1f, 0.45f, 0.1f)
+    private val white = floatArrayOf(1f, 1f, 1f)
+
+    // Colours derived from the current look, recomputed only when the look changes.
+    private var lookCached: TowerLook? = null
+    private val cSky = FloatArray(3)
+    private val cGround = FloatArray(3)
+    private val cFog = FloatArray(3)
+    private val cCloudLight = FloatArray(3)
+    private val cCloudShade = FloatArray(3)
+    private val cGem = FloatArray(3)
+
+    private fun cacheLook(t: TowerLook) {
+        if (lookCached === t) return
+        lookCached = t
+        mixInto(cSky, t.bgTop, white, 0.55f)
+        mixInto(cGround, t.bgBottom, t.aurora[0], 0.4f)
+        mixInto(cFog, t.bgBottom, t.bgTop, 0.4f)
+        mixInto(cFog, cFog, t.env.cloud, 0.25f)
+        mixInto(cCloudLight, t.env.cloud, white, 0.25f)
+        mixInto(cCloudShade, t.env.cloud, t.bgBottom, 0.35f)
+        for (k in 0..2) cGem[k] = t.ringA[k] * 0.25f
+    }
+
     private val seam = 0.035f
     private val sliceSpan = Tower.SLICE_ANGLE - seam
 
@@ -97,6 +139,13 @@ class TowerRenderer(private val game: TowerGame) : GLSurfaceView.Renderer {
         sphere = Mesh(Shapes.sphere(Tower.BALL_R))
         disc = Mesh(Shapes.disc(0.62f))
         screen = Mesh(Shapes.screen())
+        instBuf = ByteBuffer.allocateDirect(inst.size * 4).order(ByteOrder.nativeOrder()).asFloatBuffer()
+        GLES30.glGenBuffers(1, instVbo, 0)
+        GLES30.glBindBuffer(GLES30.GL_ARRAY_BUFFER, instVbo[0])
+        GLES30.glBufferData(GLES30.GL_ARRAY_BUFFER, inst.size * 4, null, GLES30.GL_DYNAMIC_DRAW)
+        slice.bindInstances(instVbo[0], 0)
+        GLES30.glBindVertexArray(0)
+        lookCached = null
 
         ptBuf = ByteBuffer.allocateDirect(ptCapacity * 8 * 4).order(ByteOrder.nativeOrder()).asFloatBuffer()
         GLES30.glGenVertexArrays(1, ptVao, 0)
@@ -199,11 +248,13 @@ class TowerRenderer(private val game: TowerGame) : GLSurfaceView.Renderer {
         lit.m4("uVP", vp)
         lit.v3("uCam", eye)
         lit.v3("uLight", 0.45f, 0.85f, 0.55f)
-        lit.v3("uSky", mix(t.bgTop, floatArrayOf(1f, 1f, 1f), 0.55f))
-        lit.v3("uGround", mix(t.bgBottom, t.aurora[0], 0.4f))
+        cacheLook(t)
+        lit.v3("uSky", cSky)
+        lit.v3("uGround", cGround)
         lit.v3("uRim", t.rim)
-        val fog = mix(mix(t.bgBottom, t.bgTop, 0.4f), t.env.cloud, 0.25f)
+        val fog = cFog
         lit.v3("uFog", fog)
+        lit.i("uInst", 0)
         lit.v2("uFogRange", 18f, 44f)
         lit.f("uTime", time)
         lit.f("uSpacing", Tower.SPACING)
@@ -235,7 +286,7 @@ class TowerRenderer(private val game: TowerGame) : GLSurfaceView.Renderer {
         Matrix.translateM(model, 0, 0f, pillarTop + 0.75f, 0f)
         Matrix.rotateM(model, 0, time * 30f, 0f, 1f, 0f)
         Matrix.scaleM(model, 0, 1.9f, 1.9f, 1.9f)
-        material(2, BallStyle.GEM, t.ringB, t.ringA, mul(t.ringA, 0.25f), gloss = 160f, metal = 0.6f)
+        material(2, BallStyle.GEM, t.ringB, t.ringA, cGem, gloss = 160f, metal = 0.6f)
         lit.m4("uModel", model)
         sphere.draw()
 
@@ -249,7 +300,11 @@ class TowerRenderer(private val game: TowerGame) : GLSurfaceView.Renderer {
         lit.m4("uModel", model)
         bases[kind]?.draw()
 
-        // Rings
+        // Rings: the goal is one mesh; all other slices are packed into one instanced draw per kind.
+        var nSolid = 0
+        var nDanger = 0
+        val dangerBase = instMax / 3
+        val haloBase = 2 * instMax / 3
         for (i in first..last) {
             if (i < sim.next) continue
             val p = sim.level.platforms[i]
@@ -259,28 +314,50 @@ class TowerRenderer(private val game: TowerGame) : GLSurfaceView.Renderer {
                 Matrix.setIdentityM(model, 0)
                 Matrix.translateM(model, 0, 0f, y, 0f)
                 Matrix.rotateM(model, 0, deg(rot), 0f, 1f, 0f)
-                material(5, 0, floatArrayOf(1f, 0.78f, 0.25f), zero, zero, gloss = 120f, metal = 1f)
+                material(5, 0, gold, zero, zero, gloss = 120f, metal = 1f)
                 lit.m4("uModel", model)
                 goalRing.draw()
                 continue
             }
-            val c = game.ringColor(i)
+            game.ringColor(i, rc)
             for (k in 0 until Tower.SLICES) {
                 val type = p.slices[k]
                 if (type == SliceType.GAP) continue
-                sliceModel(y, rot + k * Tower.SLICE_ANGLE + seam / 2f, 1f)
+                val ang = rot + k * Tower.SLICE_ANGLE + seam / 2f
                 if (type == SliceType.DANGER) {
-                    material(4, 0, t.danger, zero, zero, gloss = 90f, metal = 0f)
+                    if (nDanger >= dangerBase) continue
+                    putInst(dangerBase + nDanger, ang, y, 1f, 1f, t.danger)
+                    putInst(haloBase + nDanger, ang, y, 1.05f, 1.3f, t.danger)
+                    nDanger++
                 } else {
-                    material(0, 0, c, zero, zero, gloss = 55f + 60f * t.metalRings, metal = t.metalRings)
+                    if (nSolid >= dangerBase) continue
+                    putInst(nSolid, ang, y, 1f, 1f, rc)
+                    nSolid++
                 }
-                lit.m4("uModel", model)
-                slice.draw()
             }
         }
+        // Upload only the filled parts of the three ranges.
+        GLES30.glBindBuffer(GLES30.GL_ARRAY_BUFFER, instVbo[0])
+        val f = Mesh.INST_FLOATS
+        uploadInst(0, nSolid * f)
+        uploadInst(dangerBase * f, nDanger * f)
+        uploadInst(haloBase * f, nDanger * f)
+        lit.i("uInst", 1)
+        if (nSolid > 0) {
+            material(0, 0, rc, zero, zero, gloss = 55f + 60f * t.metalRings, metal = t.metalRings)
+            slice.bindInstances(instVbo[0], 0)
+            slice.drawInstanced(nSolid)
+        }
+        if (nDanger > 0) {
+            material(4, 0, t.danger, zero, zero, gloss = 90f, metal = 0f)
+            slice.bindInstances(instVbo[0], dangerBase)
+            slice.drawInstanced(nDanger)
+        }
+        lit.i("uInst", 0)
 
         // Ball
-        val (sy, sxz) = game.ballScale()
+        val sy = game.ballSy
+        val sxz = game.ballSxz
         val b = game.ball
         Matrix.setIdentityM(model, 0)
         val ballY = sim.ballY - Tower.BALL_R * (1f - sy)
@@ -291,12 +368,12 @@ class TowerRenderer(private val game: TowerGame) : GLSurfaceView.Renderer {
         Matrix.rotateM(model, 0, time * 40f, 0f, 1f, 0f)
         val dead = sim.dead
         val fire = sim.onFire && !dead
-        val emis = when {
-            fire -> floatArrayOf(0.9f, 0.35f + 0.15f * sin(time * 20f), 0.05f)
-            else -> zero
-        }
-        val ballCol = if (dead) gray(b.c1) else b.c1
-        material(2, b.style, ballCol, if (dead) gray(b.c2) else b.c2, emis, gloss = b.gloss, metal = b.metal)
+        val emis = if (fire) {
+            fireEmis[0] = 0.9f; fireEmis[1] = 0.35f + 0.15f * sin(time * 20f); fireEmis[2] = 0.05f
+            fireEmis
+        } else zero
+        val ballCol = if (dead) grayInto(grayA, b.c1) else b.c1
+        material(2, b.style, ballCol, if (dead) grayInto(grayB, b.c2) else b.c2, emis, gloss = b.gloss, metal = b.metal)
         lit.m4("uModel", model)
         sphere.draw()
         projectBall(ballY)
@@ -312,7 +389,9 @@ class TowerRenderer(private val game: TowerGame) : GLSurfaceView.Renderer {
         GLES30.glPolygonOffset(-2f, -2f)
         splat.use()
         splat.m4("uVP", vp)
-        for (s in game.splats) {
+        val splats = game.splats
+        for (si in splats.indices) {
+            val s = splats[si]
             if (s.ring < sim.next) continue
             val age = time - s.born
             val grow = min(1f, age * 9f)
@@ -333,13 +412,15 @@ class TowerRenderer(private val game: TowerGame) : GLSurfaceView.Renderer {
 
         // Rings flying apart
         lit.use()
-        for (br in game.breaks) {
+        val breaks = game.breaks
+        for (bi in breaks.indices) {
+            val br = breaks[bi]
             val age = time - br.born
             val dur = if (br.smash) 0.9f else 0.7f
             val k01 = (age / dur).coerceIn(0f, 1f)
             if (k01 >= 1f) continue
             val p = sim.level.platforms.getOrNull(br.ring) ?: continue
-            val c = game.ringColor(br.ring)
+            val c = game.ringColor(br.ring, rc)
             val y0 = Tower.platformTop(br.ring) - Tower.THICKNESS / 2f
             lit.f("uAlpha", (1f - k01) * (1f - k01))
             for (k in 0 until Tower.SLICES) {
@@ -357,38 +438,35 @@ class TowerRenderer(private val game: TowerGame) : GLSurfaceView.Renderer {
                 val s = 1f - 0.35f * k01
                 Matrix.scaleM(model, 0, s, s, s)
                 if (type == SliceType.DANGER) material(4, 0, t.danger, zero, zero, 90f, 0f)
-                else material(0, 0, c, if (br.smash) floatArrayOf(1f, 0.5f, 0.1f) else zero, if (br.smash) floatArrayOf(0.6f * (1 - k01), 0.25f * (1 - k01), 0f) else zero, 60f, t.metalRings)
+                else {
+                    smashEmis[0] = 0.6f * (1 - k01); smashEmis[1] = 0.25f * (1 - k01); smashEmis[2] = 0f
+                    material(0, 0, c, if (br.smash) smashTint else zero, if (br.smash) smashEmis else zero, 60f, t.metalRings)
+                }
                 lit.m4("uModel", model)
                 slice.draw()
             }
         }
         lit.f("uAlpha", 1f)
 
-        // Additive glows: danger halos, goal halo, ball glow
+        // Additive glows: danger halos (one instanced draw) and the goal halo.
         GLES30.glBlendFunc(GLES30.GL_ONE, GLES30.GL_ONE)
-        for (i in first..last) {
-            if (i < sim.next) continue
-            val p = sim.level.platforms[i]
-            val y = Tower.platformTop(i) - Tower.THICKNESS / 2f
-            val rot = sim.ringRotation(i)
-            if (p.goal) {
-                Matrix.setIdentityM(model, 0)
-                Matrix.translateM(model, 0, 0f, y, 0f)
-                Matrix.scaleM(model, 0, 1.06f, 1.4f, 1.06f)
-                material(3, 0, floatArrayOf(1f, 0.75f, 0.2f), zero, zero, 1f, 0f)
-                lit.f("uAlpha", 0.35f + 0.15f * sin(time * 4f))
-                lit.m4("uModel", model)
-                goalRing.draw()
-                continue
-            }
-            for (k in 0 until Tower.SLICES) {
-                if (p.slices[k] != SliceType.DANGER) continue
-                sliceModel(y, rot + k * Tower.SLICE_ANGLE + seam / 2f, 1.05f)
-                material(3, 0, t.danger, zero, zero, 1f, 0f)
-                lit.f("uAlpha", 0.28f + 0.12f * sin(time * 5f + k))
-                lit.m4("uModel", model)
-                slice.draw()
-            }
+        if (nDanger > 0) {
+            lit.i("uInst", 1)
+            material(3, 0, t.danger, zero, zero, 1f, 0f)
+            lit.f("uAlpha", 0.3f + 0.12f * sin(time * 5f))
+            slice.bindInstances(instVbo[0], haloBase)
+            slice.drawInstanced(nDanger)
+            lit.i("uInst", 0)
+        }
+        val goalIdx = sim.level.platforms.size - 1
+        if (goalIdx in first..last && goalIdx >= sim.next) {
+            Matrix.setIdentityM(model, 0)
+            Matrix.translateM(model, 0, 0f, Tower.platformTop(goalIdx) - Tower.THICKNESS / 2f, 0f)
+            Matrix.scaleM(model, 0, 1.06f, 1.4f, 1.06f)
+            material(3, 0, goldHalo, zero, zero, 1f, 0f)
+            lit.f("uAlpha", 0.35f + 0.15f * sin(time * 4f))
+            lit.m4("uModel", model)
+            goalRing.draw()
         }
         lit.f("uAlpha", 1f)
 
@@ -496,8 +574,8 @@ class TowerRenderer(private val game: TowerGame) : GLSurfaceView.Renderer {
         val step = 4.6f
         val j0 = ((topY + 8f - (camY + 10f)) / step).toInt().coerceAtLeast(0)
         val j1 = ((topY + 8f - (camY - 36f)) / step).toInt()
-        val light = mix(e.cloud, floatArrayOf(1f, 1f, 1f), 0.25f)
-        val shade = mix(e.cloud, t.bgBottom, 0.35f)
+        val light = cCloudLight
+        val shade = cCloudShade
         val space = e.scene == Scene.SPACE
         for (j in j0..j1) {
             val y = topY + 8f - j * step + h(j, 1) * 1.6f
@@ -514,8 +592,8 @@ class TowerRenderer(private val game: TowerGame) : GLSurfaceView.Renderer {
             Matrix.rotateM(model, 0, -90f, 1f, 0f, 0f)
             Matrix.scaleM(model, 0, sc * 1.6f, 1f, sc)
             cloudProg.m4("uModel", model)
-            cloudProg.v3("uColor", mix(light, fog, f))
-            cloudProg.v3("uColor2", mix(shade, fog, f))
+            cloudProg.v3("uColor", mixInto(cloudA, light, fog, f))
+            cloudProg.v3("uColor2", mixInto(cloudB, shade, fog, f))
             cloudProg.f("uAlpha", (if (space) 0.35f else 0.85f) * (1f - f * 0.6f))
             cloudProg.f("uSeed", h(j, 7) * 10f)
             disc.draw()
@@ -524,32 +602,34 @@ class TowerRenderer(private val game: TowerGame) : GLSurfaceView.Renderer {
 
     private fun drawParticles(ballY: Float, fire: Boolean, dead: Boolean) {
         val pa = game.particles
-        ptBuf.clear()
+        val o = ptScratch
         var n = 0
+        fun put(x: Float, y: Float, z: Float, r: Float, g: Float, b: Float, a: Float, sz: Float) {
+            var k = n * 8
+            o[k++] = x; o[k++] = y; o[k++] = z; o[k++] = r; o[k++] = g; o[k++] = b; o[k++] = a; o[k] = sz
+            n++
+        }
         // Comet trail behind the ball.
         if (!dead) {
-            val tc = if (fire) floatArrayOf(1f, 0.45f, 0.1f) else game.ball.trail
-            val tr = game.trail
-            val count = tr.size
-            for ((idx, y) in tr.withIndex()) {
-                if (idx == count - 1) continue
+            val tc = if (fire) fireTrail else game.ball.trail
+            val count = game.trailCount
+            for (idx in 0 until count - 1) {
+                val y = game.trailAt(idx)
+                if (kotlin.math.abs(ballY - y) < 0.05f) continue
                 val k = idx.toFloat() / count
-                if (ballY - y > -0.05f && kotlin.math.abs(ballY - y) < 0.05f) continue
                 put(0f, y, Tower.BALL_PATH_R, tc[0], tc[1], tc[2], 0.55f * k, Tower.BALL_R * (0.9f + 1.4f * k))
-                n++
             }
             // Soft glow around the ball.
             put(0f, ballY, Tower.BALL_PATH_R, tc[0], tc[1], tc[2], if (fire) 0.9f else 0.35f, Tower.BALL_R * (if (fire) 6f else 4f))
-            n++
         }
         val limit = min(pa.count, ptCapacity - n)
         for (i in 0 until limit) {
             val l = (pa.life[i] / pa.maxLife[i]).coerceIn(0f, 1f)
             put(pa.px[i], pa.py[i], pa.pz[i], pa.r[i], pa.g[i], pa.b[i], pa.a[i] * l, pa.size[i] * (0.5f + 0.5f * l) * 3f)
-            n++
         }
         if (n == 0) return
-        ptBuf.position(0)
+        ptBuf.clear()
+        ptBuf.put(o, 0, n * 8).position(0)
         GLES30.glBindBuffer(GLES30.GL_ARRAY_BUFFER, ptVbo[0])
         GLES30.glBufferSubData(GLES30.GL_ARRAY_BUFFER, 0, n * 32, ptBuf)
         pts.use()
@@ -560,10 +640,17 @@ class TowerRenderer(private val game: TowerGame) : GLSurfaceView.Renderer {
         GLES30.glBindVertexArray(0)
     }
 
-    private fun put(x: Float, y: Float, z: Float, r: Float, g: Float, b: Float, a: Float, s: Float) {
-        ptBuf.put(x); ptBuf.put(y); ptBuf.put(z)
-        ptBuf.put(r); ptBuf.put(g); ptBuf.put(b); ptBuf.put(a)
-        ptBuf.put(s)
+    private fun putInst(slot: Int, angle: Float, y: Float, sxz: Float, sy: Float, c: FloatArray) {
+        var k = slot * Mesh.INST_FLOATS
+        inst[k++] = angle; inst[k++] = y; inst[k++] = sxz; inst[k++] = sy
+        inst[k++] = c[0]; inst[k++] = c[1]; inst[k] = c[2]
+    }
+
+    private fun uploadInst(offsetFloats: Int, countFloats: Int) {
+        if (countFloats <= 0) return
+        instBuf.clear()
+        instBuf.put(inst, offsetFloats, countFloats).position(0)
+        GLES30.glBufferSubData(GLES30.GL_ARRAY_BUFFER, offsetFloats * 4, countFloats * 4, instBuf)
     }
 
     private fun projectBall(y: Float) {
@@ -575,12 +662,15 @@ class TowerRenderer(private val game: TowerGame) : GLSurfaceView.Renderer {
         }
     }
 
-    private fun mul(c: FloatArray, k: Float) = floatArrayOf(c[0] * k, c[1] * k, c[2] * k)
     private fun deg(r: Float) = Math.toDegrees(r.toDouble()).toFloat()
-    private fun mix(a: FloatArray, b: FloatArray, t: Float) =
-        floatArrayOf(a[0] + (b[0] - a[0]) * t, a[1] + (b[1] - a[1]) * t, a[2] + (b[2] - a[2]) * t)
-    private fun gray(c: FloatArray): FloatArray {
+    private fun mixInto(out: FloatArray, a: FloatArray, b: FloatArray, t: Float): FloatArray {
+        val r = a[0] + (b[0] - a[0]) * t; val g = a[1] + (b[1] - a[1]) * t; val bl = a[2] + (b[2] - a[2]) * t
+        out[0] = r; out[1] = g; out[2] = bl
+        return out
+    }
+    private fun grayInto(out: FloatArray, c: FloatArray): FloatArray {
         val l = c[0] * 0.3f + c[1] * 0.59f + c[2] * 0.11f
-        return floatArrayOf(l * 0.6f, l * 0.6f, l * 0.65f)
+        out[0] = l * 0.6f; out[1] = l * 0.6f; out[2] = l * 0.65f
+        return out
     }
 }

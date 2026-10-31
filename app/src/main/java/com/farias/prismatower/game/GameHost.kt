@@ -101,13 +101,15 @@ class GameHost(context: Context) : TowerGame.Callbacks {
     fun play(n: Int, keepScore: Boolean = false) {
         daily = false
         level = n
-        start(TowerLevels.level(n), keepScore)
+        start(LevelCache.get(n), keepScore)
+        LevelCache.prefetch(n + 1)
     }
 
     fun playDaily() {
         daily = true
         level = dayIndex()
-        start(TowerLevels.daily(dayIndex()), false)
+        start(LevelCache.daily(dayIndex()), false)
+        LevelCache.prefetch(Progress.level)
     }
 
     fun retry() {
