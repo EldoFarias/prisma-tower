@@ -128,7 +128,7 @@ fun ShopScreen(host: GameHost, ads: AdsManager, sound: SoundManager, onBack: () 
             Box(
                 Modifier
                     .fillMaxWidth()
-                    .height(screenH * 0.3f)
+                    .height(screenH * 0.36f)
                     .drawBehind {
                         val edge = 18.dp.toPx()
                         // Dim the scene behind the shop so the panel stands out.
