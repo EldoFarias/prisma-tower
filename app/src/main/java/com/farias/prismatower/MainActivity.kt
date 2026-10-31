@@ -41,6 +41,11 @@ class MainActivity : ComponentActivity() {
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
         Progress.init(this)
+        if (android.os.Build.VERSION.SDK_INT >= 28) {
+            window.attributes = window.attributes.apply {
+                layoutInDisplayCutoutMode = android.view.WindowManager.LayoutParams.LAYOUT_IN_DISPLAY_CUTOUT_MODE_SHORT_EDGES
+            }
+        }
         enableEdgeToEdge(
             statusBarStyle = SystemBarStyle.dark(Color.TRANSPARENT),
             navigationBarStyle = SystemBarStyle.dark(Color.TRANSPARENT),
@@ -106,13 +111,20 @@ class MainActivity : ComponentActivity() {
                                     }
                                 },
                             )
-                            Screen.GAME -> GameScreen(
+                            Screen.GAME -> {
+                                // Full screen while playing: hide the status bar (swipe down shows it for a moment).
+                                androidx.compose.runtime.DisposableEffect(Unit) {
+                                    setImmersive(true)
+                                    onDispose { setImmersive(false) }
+                                }
+                                GameScreen(
                                 host = host,
                                 ads = ads,
                                 sound = sound,
                                 onGreatMoment = { ReviewPrompt.maybeAsk(this@MainActivity) },
                                 onHome = { go(Screen.HOME) },
-                            )
+                                )
+                            }
                             Screen.SHOP -> ShopScreen(host, ads, sound) { go(Screen.HOME) }
                             Screen.MAP -> {
                                 androidx.compose.runtime.DisposableEffect(Unit) {
@@ -169,6 +181,25 @@ class MainActivity : ComponentActivity() {
             "stats" -> Screen.STATS
             else -> Screen.HOME
         }
+    }
+
+    private var immersive = false
+
+    /** Hides (or shows back) the status bar. Re-applied when the window regains focus (some ROMs bring it back). */
+    private fun setImmersive(on: Boolean) {
+        immersive = on
+        val c = androidx.core.view.WindowCompat.getInsetsController(window, window.decorView)
+        if (on) {
+            c.systemBarsBehavior = androidx.core.view.WindowInsetsControllerCompat.BEHAVIOR_SHOW_TRANSIENT_BARS_BY_SWIPE
+            c.hide(androidx.core.view.WindowInsetsCompat.Type.statusBars())
+        } else {
+            c.show(androidx.core.view.WindowInsetsCompat.Type.statusBars())
+        }
+    }
+
+    override fun onWindowFocusChanged(hasFocus: Boolean) {
+        super.onWindowFocusChanged(hasFocus)
+        if (hasFocus && immersive) setImmersive(true)
     }
 
     override fun onResume() {
