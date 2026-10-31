@@ -128,11 +128,11 @@ fun ShopScreen(host: GameHost, ads: AdsManager, sound: SoundManager, onBack: () 
             Box(
                 Modifier
                     .fillMaxWidth()
-                    .height(screenH * 0.2f)
+                    .height(screenH * 0.3f)
                     .drawBehind {
                         val edge = 18.dp.toPx()
                         // Dim the scene behind the shop so the panel stands out.
-                        drawRect(Color(0xD207051A))
+                        drawRect(Color(0x4D07051A))
                         drawRect(Brush.verticalGradient(listOf(Color(0xFF130C30), Color.Transparent), endY = edge))
                         drawRect(Brush.verticalGradient(listOf(Color.Transparent, Color(0xFF1B1240)), startY = size.height - edge, endY = size.height), topLeft = Offset(0f, size.height - edge), size = Size(size.width, edge))
                     },
