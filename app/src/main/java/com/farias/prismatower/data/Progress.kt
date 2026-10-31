@@ -228,6 +228,17 @@ object Progress {
         return true
     }
 
+    /** Unlocks without charging (mystery prize). */
+    fun giveTower(id: String) {
+        ownedTowers = ownedTowers + id
+        prefs.edit().putStringSet("owned_towers", ownedTowers).apply()
+    }
+
+    fun giveBall(id: String) {
+        ownedBalls = ownedBalls + id
+        prefs.edit().putStringSet("owned_balls", ownedBalls).apply()
+    }
+
     fun selectTower(id: String) {
         if (!ownsTower(id)) return
         towerId = id

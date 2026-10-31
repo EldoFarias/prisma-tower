@@ -88,4 +88,23 @@
     <string name="ball_planet">Gezegen</string>
     <string name="ball_eight">8 topu</string>
     <string name="ball_lava">Lav</string>
+    <string name="tower_castle">Kale</string>
+    <string name="tower_desert">Çöl</string>
+    <string name="tower_aurora">Kutup ışığı</string>
+    <string name="ball_tennis">Tenis</string>
+    <string name="ball_melon">Karpuz</string>
+    <string name="ball_soccer">Futbol</string>
+    <string name="ball_basket">Basketbol</string>
+    <string name="ball_smiley">Gülen yüz</string>
+    <string name="ball_moon">Ay</string>
+    <string name="ball_eye">Göz</string>
+    <string name="ball_earth">Dünya</string>
+    <string name="ball_gem">Mücevher</string>
+    <string name="ball_galaxy">Galaksi</string>
+    <string name="rarity_common">SIRADAN</string>
+    <string name="rarity_rare">NADİR</string>
+    <string name="rarity_epic">EPİK</string>
+    <string name="rarity_legendary">EFSANEVİ</string>
+    <string name="mystery_box">Sürpriz ödül</string>
+    <string name="new_item">KAZANDIN!</string>
 </resources>

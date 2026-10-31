@@ -88,4 +88,23 @@
     <string name="ball_planet">Planeta</string>
     <string name="ball_eight">Bola 8</string>
     <string name="ball_lava">Lava</string>
+    <string name="tower_castle">Castillo</string>
+    <string name="tower_desert">Desierto</string>
+    <string name="tower_aurora">Aurora</string>
+    <string name="ball_tennis">Tenis</string>
+    <string name="ball_melon">Sandía</string>
+    <string name="ball_soccer">Fútbol</string>
+    <string name="ball_basket">Baloncesto</string>
+    <string name="ball_smiley">Sonrisa</string>
+    <string name="ball_moon">Luna</string>
+    <string name="ball_eye">Ojo</string>
+    <string name="ball_earth">Tierra</string>
+    <string name="ball_gem">Gema</string>
+    <string name="ball_galaxy">Galaxia</string>
+    <string name="rarity_common">COMÚN</string>
+    <string name="rarity_rare">RARA</string>
+    <string name="rarity_epic">ÉPICA</string>
+    <string name="rarity_legendary">LEGENDARIA</string>
+    <string name="mystery_box">Premio sorpresa</string>
+    <string name="new_item">¡LO CONSEGUISTE!</string>
 </resources>

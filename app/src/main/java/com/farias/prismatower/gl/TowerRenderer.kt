@@ -20,10 +20,19 @@ import kotlin.math.tan
 /** Draws a [TowerGame] with OpenGL ES 3.0 and advances it every frame. */
 class TowerRenderer(private val game: TowerGame) : GLSurfaceView.Renderer {
 
+    companion object {
+        /** Radius of the paved top of the base. */
+        const val PLAZA = 3.4f
+        /** How far the pillar goes above the first ring. */
+        const val PILLAR_ABOVE = 3.0f
+    }
+
     private lateinit var lit: Program
     private lateinit var splat: Program
     private lateinit var bg: Program
     private lateinit var pts: Program
+    private lateinit var cloudProg: Program
+    private val bases = arrayOfNulls<Mesh>(3)
     private lateinit var slice: Mesh
     private lateinit var goalRing: Mesh
     private lateinit var pillar: Mesh
@@ -58,6 +67,8 @@ class TowerRenderer(private val game: TowerGame) : GLSurfaceView.Renderer {
         splat = Program(Shaders.LIT_VS, Shaders.SPLAT_FS)
         bg = Program(Shaders.BG_VS, Shaders.BG_FS)
         pts = Program(Shaders.PT_VS, Shaders.PT_FS)
+        cloudProg = Program(Shaders.LIT_VS, Shaders.CLOUD_FS)
+        for (k in 0..2) bases[k] = Mesh(Shapes.base(k, PLAZA, seed = 3 + k))
         slice = Mesh(Shapes.wedge(sliceSpan, Tower.RING_INNER, Tower.RING_OUTER, Tower.THICKNESS, 0.075f))
         goalRing = Mesh(Shapes.wedge(TowerGame.TWO_PI, Tower.RING_INNER, Tower.RING_OUTER, Tower.THICKNESS * 1.3f, 0.09f, steps = 96))
         pillar = Mesh(Shapes.cylinder(Tower.PILLAR_R, 0f, 1f))
@@ -115,7 +126,10 @@ class TowerRenderer(private val game: TowerGame) : GLSurfaceView.Renderer {
         GLES30.glClearColor(t.bgBottom[0], t.bgBottom[1], t.bgBottom[2], 1f)
         GLES30.glClear(GLES30.GL_COLOR_BUFFER_BIT or GLES30.GL_DEPTH_BUFFER_BIT)
 
-        drawBackground(t, time, camY)
+        val topY = Tower.platformTop(0)
+        val bottomY = Tower.platformTop(sim.level.platforms.size - 1)
+        val prog = ((topY + 2f - camY) / (topY + 2f - bottomY)).coerceIn(0f, 1f)
+        drawBackground(t, time, prog)
 
         // ---------------------------------------------------------- lit scene
         lit.use()
@@ -125,9 +139,9 @@ class TowerRenderer(private val game: TowerGame) : GLSurfaceView.Renderer {
         lit.v3("uSky", mix(t.bgTop, floatArrayOf(1f, 1f, 1f), 0.55f))
         lit.v3("uGround", mix(t.bgBottom, t.aurora[0], 0.4f))
         lit.v3("uRim", t.rim)
-        val fog = mix(t.bgBottom, t.bgTop, 0.35f)
+        val fog = mix(mix(t.bgBottom, t.bgTop, 0.4f), t.env.cloud, 0.25f)
         lit.v3("uFog", fog)
-        lit.v2("uFogRange", 16f, 34f)
+        lit.v2("uFogRange", 18f, 44f)
         lit.f("uTime", time)
         lit.f("uSpacing", Tower.SPACING)
         lit.f("uAlpha", 1f)
@@ -135,8 +149,9 @@ class TowerRenderer(private val game: TowerGame) : GLSurfaceView.Renderer {
         // Pillar
         val first = max(0, sim.next - 1)
         val last = min(sim.level.platforms.size - 1, sim.next + 9)
-        val pillarTop = camY + 12f
-        val pillarBottom = Tower.platformTop(sim.level.platforms.size - 1) - 6f
+        val baseTop = bottomY - Tower.THICKNESS * 1.15f - 0.02f
+        val pillarTop = topY + PILLAR_ABOVE
+        val pillarBottom = baseTop - 0.5f
         Matrix.setIdentityM(model, 0)
         Matrix.translateM(model, 0, 0f, pillarBottom, 0f)
         Matrix.rotateM(model, 0, deg(sim.rotation), 0f, 1f, 0f)
@@ -144,6 +159,32 @@ class TowerRenderer(private val game: TowerGame) : GLSurfaceView.Renderer {
         material(1, t.pattern(), t.pillar, t.pillar2, zero, gloss = 70f, metal = 0.25f)
         lit.m4("uModel", model)
         pillar.draw()
+
+        // Finial on top of the pillar: a glossy orb on a collar.
+        val env = t.env
+        Matrix.setIdentityM(model, 0)
+        Matrix.translateM(model, 0, 0f, pillarTop + 0.05f, 0f)
+        Matrix.scaleM(model, 0, 3.2f, 0.7f, 3.2f)
+        material(2, BallStyle.METAL, t.pillar2, t.pillar, zero, gloss = 120f, metal = 1f)
+        lit.m4("uModel", model)
+        sphere.draw()
+        Matrix.setIdentityM(model, 0)
+        Matrix.translateM(model, 0, 0f, pillarTop + 0.75f, 0f)
+        Matrix.rotateM(model, 0, time * 30f, 0f, 1f, 0f)
+        Matrix.scaleM(model, 0, 1.9f, 1.9f, 1.9f)
+        material(2, BallStyle.GEM, t.ringB, t.ringA, mul(t.ringA, 0.25f), gloss = 160f, metal = 0.6f)
+        lit.m4("uModel", model)
+        sphere.draw()
+
+        // The base the tower stands on (it doesn't turn: the tower turns on top of it).
+        val kind = env.baseKind
+        Matrix.setIdentityM(model, 0)
+        Matrix.translateM(model, 0, 0f, baseTop, 0f)
+        lit.f("uBaseTop", baseTop)
+        val style = if (kind == BaseKind.CASTLE) env.baseStyle else BaseStyle.ROCK
+        material(6, style, env.rock, env.top, zero, gloss = 18f, metal = 0f)
+        lit.m4("uModel", model)
+        bases[kind]?.draw()
 
         // Rings
         for (i in first..last) {
@@ -203,6 +244,7 @@ class TowerRenderer(private val game: TowerGame) : GLSurfaceView.Renderer {
 
         // Paint splats
         GLES30.glBlendFunc(GLES30.GL_SRC_ALPHA, GLES30.GL_ONE_MINUS_SRC_ALPHA)
+        drawClouds(t, time, camY, topY, bottomY, fog)
         GLES30.glEnable(GLES30.GL_POLYGON_OFFSET_FILL)
         GLES30.glPolygonOffset(-2f, -2f)
         splat.use()
@@ -319,20 +361,66 @@ class TowerRenderer(private val game: TowerGame) : GLSurfaceView.Renderer {
         }
     }
 
-    private fun drawBackground(t: TowerLook, time: Float, camY: Float) {
+    private fun drawBackground(t: TowerLook, time: Float, prog: Float) {
         GLES30.glDepthMask(false)
+        val e = t.env
         bg.use()
         bg.v3("uTop", t.bgTop)
         bg.v3("uBottom", t.bgBottom)
         bg.v3("uA1", t.aurora[0])
         bg.v3("uA2", t.aurora[1])
         bg.v3("uA3", t.aurora[2])
+        bg.v3("uLand1", e.land1)
+        bg.v3("uLand2", e.land2)
+        bg.v3("uSun", e.sun)
+        bg.v3("uCloud", e.cloud)
+        bg.i("uScene", e.scene)
         bg.f("uTime", time)
-        bg.f("uScroll", -camY)
+        bg.f("uProg", prog)
         bg.f("uAspect", width.toFloat() / height)
         bg.f("uStars", if (t.stars) 1f else 0f)
         screen.draw()
         GLES30.glDepthMask(true)
+    }
+
+    private fun h(i: Int, k: Int): Float {
+        var n = i * 73856093 xor (k * 19349663)
+        n = (n xor (n ushr 13)) * 1274126177
+        return ((n xor (n ushr 16)) and 0xFFFF) / 65535f
+    }
+
+    /** Clouds drifting beside and behind the tower, at fixed heights, so the descent is felt. */
+    private fun drawClouds(t: TowerLook, time: Float, camY: Float, topY: Float, bottomY: Float, fog: FloatArray) {
+        val e = t.env
+        cloudProg.use()
+        cloudProg.m4("uVP", vp)
+        val step = 3.4f
+        val j0 = ((topY + 8f - (camY + 10f)) / step).toInt().coerceAtLeast(0)
+        val j1 = ((topY + 8f - (camY - 36f)) / step).toInt()
+        val light = mix(e.cloud, floatArrayOf(1f, 1f, 1f), 0.25f)
+        val shade = mix(e.cloud, t.bgBottom, 0.35f)
+        val space = e.scene == Scene.SPACE
+        for (j in j0..j1) {
+            val y = topY + 8f - j * step + h(j, 1) * 1.6f
+            if (y < bottomY - 4f) break
+            val side = if (h(j, 2) < 0.5f) -1f else 1f
+            val behind = h(j, 3) < 0.55f
+            val x = side * (if (behind) 1.5f + h(j, 4) * 7f else 6.2f + h(j, 4) * 6f) + kotlin.math.sin(time * 0.06f + j) * 0.8f
+            val z = if (behind) -4f - h(j, 5) * 12f else -1f + h(j, 5) * 4f
+            val sc = 2.2f + h(j, 6) * 3.2f
+            val dist = kotlin.math.sqrt((x - eye[0]) * (x - eye[0]) + (y - eye[1]) * (y - eye[1]) + (z - eye[2]) * (z - eye[2]))
+            val f = ((dist - 14f) / 34f).coerceIn(0f, 0.85f)
+            Matrix.setIdentityM(model, 0)
+            Matrix.translateM(model, 0, x, y, z)
+            Matrix.rotateM(model, 0, -90f, 1f, 0f, 0f)
+            Matrix.scaleM(model, 0, sc * 1.6f, 1f, sc)
+            cloudProg.m4("uModel", model)
+            cloudProg.v3("uColor", mix(light, fog, f))
+            cloudProg.v3("uColor2", mix(shade, fog, f))
+            cloudProg.f("uAlpha", (if (space) 0.35f else 0.85f) * (1f - f * 0.6f))
+            cloudProg.f("uSeed", h(j, 7) * 10f)
+            disc.draw()
+        }
     }
 
     private fun drawParticles(ballY: Float, fire: Boolean, dead: Boolean) {
@@ -388,6 +476,7 @@ class TowerRenderer(private val game: TowerGame) : GLSurfaceView.Renderer {
         }
     }
 
+    private fun mul(c: FloatArray, k: Float) = floatArrayOf(c[0] * k, c[1] * k, c[2] * k)
     private fun deg(r: Float) = Math.toDegrees(r.toDouble()).toFloat()
     private fun mix(a: FloatArray, b: FloatArray, t: Float) =
         floatArrayOf(a[0] + (b[0] - a[0]) * t, a[1] + (b[1] - a[1]) * t, a[2] + (b[2] - a[2]) * t)

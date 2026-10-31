@@ -1,5 +1,6 @@
 package com.farias.prismatower.game
 
+import com.farias.prismatower.gl.Ambient
 import com.farias.prismatower.gl.BallLook
 import com.farias.prismatower.gl.Looks
 import com.farias.prismatower.gl.TowerLook
@@ -149,6 +150,7 @@ class TowerGame(private val callbacks: Callbacks) {
         trail.addLast(sim.ballY)
         while (trail.size > 14) trail.removeFirst()
         if (sim.onFire && !sim.dead) emitFire()
+        emitAmbient(dt)
         particles.update(dt)
         splats.removeAll { it.ring < sim.next - 1 || clock - it.born > 6f }
         breaks.removeAll { clock - it.born > 1.2f }
@@ -234,6 +236,34 @@ class TowerGame(private val callbacks: Callbacks) {
                 1f, 0.35f + 0.5f * hot, 0.05f + 0.2f * hot, 1f,
                 0.22f + rnd.nextFloat() * 0.18f, 0.35f + rnd.nextFloat() * 0.25f, gravity = -3f,
             )
+        }
+    }
+
+    private var ambientAcc = 0f
+
+    /** Snow, petals, embers, fireflies or sparkles drifting in the air, by tower look. */
+    private fun emitAmbient(dt: Float) {
+        val kind = tower.env.ambient
+        if (kind == Ambient.NONE) return
+        val rate = when (kind) { Ambient.SNOW -> 28f; Ambient.PETALS -> 9f; Ambient.EMBERS -> 16f; Ambient.FIREFLIES -> 6f; else -> 8f }
+        ambientAcc += dt * rate
+        val c = tower.env.ambientColor
+        while (ambientAcc >= 1f) {
+            ambientAcc -= 1f
+            val x = (rnd.nextFloat() - 0.5f) * 18f
+            val z = -8f + rnd.nextFloat() * 14f
+            when (kind) {
+                Ambient.SNOW -> particles.add(x, cameraY + 6f, z, 0.3f, -1.5f - rnd.nextFloat(), 0f, c[0], c[1], c[2], 0.55f,
+                    0.05f + rnd.nextFloat() * 0.06f, 7f, gravity = 0f)
+                Ambient.PETALS -> particles.add(x, cameraY + 6f, z, 0.9f + rnd.nextFloat(), -1.2f, 0.3f, c[0], c[1], c[2], 0.7f,
+                    0.09f + rnd.nextFloat() * 0.06f, 8f, gravity = 0f)
+                Ambient.EMBERS -> particles.add(x, cameraY - 16f, z, (rnd.nextFloat() - 0.5f) * 0.6f, 2.5f + rnd.nextFloat() * 2f, 0f,
+                    c[0], c[1] * (0.6f + 0.4f * rnd.nextFloat()), c[2], 0.9f, 0.05f + rnd.nextFloat() * 0.07f, 7f, gravity = 0f)
+                Ambient.FIREFLIES -> particles.add(x, cameraY - 6f + rnd.nextFloat() * 8f, z, (rnd.nextFloat() - 0.5f) * 0.8f,
+                    (rnd.nextFloat() - 0.5f) * 0.6f, 0f, c[0], c[1], c[2], 0.9f, 0.07f, 3f + rnd.nextFloat() * 2f, gravity = 0f)
+                else -> particles.add(x, cameraY - 8f + rnd.nextFloat() * 12f, z, 0f, 0.3f, 0f, c[0], c[1], c[2], 0.8f,
+                    0.04f + rnd.nextFloat() * 0.05f, 1.6f + rnd.nextFloat() * 1.5f, gravity = 0f)
+            }
         }
     }
 

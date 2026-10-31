@@ -174,6 +174,158 @@ object Shapes {
         return m
     }
 
+    // ------------------------------------------------------------------ the base the tower stands on
+
+    private fun h1(x: Int): Float {
+        var n = x * 374761393 + 668265263
+        n = (n xor (n ushr 13)) * 1274126177
+        return ((n xor (n ushr 16)) and 0xFFFFFF) / 16777215f
+    }
+
+    /** Smooth periodic value noise around the circle ([cells] per turn) and along y. */
+    private fun ring(a: Float, y: Float, cells: Int, seed: Int): Float {
+        val u = a / (2 * PI.toFloat()) * cells
+        val i0 = kotlin.math.floor(u).toInt()
+        val fu = u - i0
+        val j0 = kotlin.math.floor(y).toInt()
+        val fy = y - j0
+        fun v(i: Int, j: Int) = h1(((i % cells) + cells) % cells + j * 131 + seed * 7919)
+        val su = fu * fu * (3 - 2 * fu)
+        val sy = fy * fy * (3 - 2 * fy)
+        val a0 = v(i0, j0) + (v(i0 + 1, j0) - v(i0, j0)) * su
+        val a1 = v(i0, j0 + 1) + (v(i0 + 1, j0 + 1) - v(i0, j0 + 1)) * su
+        return a0 + (a1 - a0) * sy
+    }
+
+    private fun rockNoise(a: Float, y: Float, seed: Int): Float =
+        ring(a, y * 0.18f, 7, seed) * 0.55f + ring(a, y * 0.45f, 17, seed + 1) * 0.3f + ring(a, y * 1.1f, 37, seed + 2) * 0.15f
+
+    /**
+     * What the tower stands on, top at y = 0: a rocky mountain peak, a castle keep on a rock, or a floating
+     * asteroid. The flat top (radius [plaza]) is where the goal ring sits.
+     */
+    fun base(kind: Int, plaza: Float, seed: Int = 3): MeshData {
+        val m = MeshData()
+        val seg = 72
+        val rows = ArrayList<Float>() // y of each row
+        val prof = ArrayList<Float>() // base radius of each row
+        val jag = ArrayList<Float>() // how rocky each row is
+        fun row(y: Float, r: Float, j: Float) { rows.add(y); prof.add(r); jag.add(j) }
+        when (kind) {
+            BaseKind.CASTLE -> {
+                val keep = plaza + 0.15f
+                row(0f, keep, 0f)
+                row(-0.5f, keep, 0f)
+                row(-0.55f, keep - 0.18f, 0f)
+                var y = -0.6f
+                while (y > -8.4f) { row(y, keep - 0.18f, 0f); y -= 0.9f }
+                row(-8.5f, keep - 0.18f, 0f)
+                row(-8.6f, keep + 0.35f, 0f) // ledge where the keep meets the rock
+                row(-9.0f, keep + 0.35f, 0f)
+                y = -9.4f
+                while (y > -60f) {
+                    val d = -y - 9f
+                    row(y, keep + 0.9f + Math.pow(d.toDouble(), 0.82).toFloat() * 0.5f, (d / 2.5f).coerceAtMost(1f))
+                    y -= if (y > -20f) 0.9f else 2.2f
+                }
+            }
+            BaseKind.ASTEROID -> {
+                row(0f, plaza + 0.2f, 0f)
+                row(-0.35f, plaza + 0.4f, 0.15f)
+                var y = -0.8f
+                while (y > -16f) {
+                    val t = -y / 16f
+                    row(y, (plaza + 0.6f + 3.2f * Math.pow(kotlin.math.sin(PI * t * 0.75), 0.7).toFloat()) * (1f - t * t * 0.85f), 1f)
+                    y -= 0.7f
+                }
+                row(-16.3f, 0.3f, 0.3f)
+            }
+            else -> {
+                row(0f, plaza + 0.2f, 0f)
+                row(-0.3f, plaza + 0.35f, 0.05f)
+                var y = -0.7f
+                while (y > -64f) {
+                    val d = -y
+                    row(y, plaza + 0.6f + Math.pow(d.toDouble(), 0.85).toFloat() * 0.42f, (d / 3f).coerceAtMost(1f))
+                    y -= if (y > -14f) 0.6f else 2.2f
+                }
+            }
+        }
+        val nRows = rows.size
+        val px = Array(nRows) { FloatArray(seg + 1) }
+        val py = Array(nRows) { FloatArray(seg + 1) }
+        val pz = Array(nRows) { FloatArray(seg + 1) }
+        for (j in 0 until nRows) for (i in 0..seg) {
+            val a = (2 * PI * i / seg).toFloat()
+            val n = rockNoise(a, rows[j], seed)
+            val r = prof[j] * (1f + jag[j] * (n - 0.45f) * 0.5f)
+            val yy = rows[j] + jag[j] * (ring(a, rows[j] * 0.3f, 11, seed + 9) - 0.5f) * 1.1f
+            px[j][i] = r * sin(a); py[j][i] = yy; pz[j][i] = r * cos(a)
+        }
+        val base0 = m.count
+        for (j in 0 until nRows) for (i in 0..seg) {
+            val jn = minOf(j + 1, nRows - 1); val jp = maxOf(j - 1, 0)
+            val inx = if (i == seg) 1 else i + 1; val ipx = if (i == 0) seg - 1 else i - 1
+            val dx = px[jn][i] - px[jp][i]; val dy = py[jn][i] - py[jp][i]; val dz = pz[jn][i] - pz[jp][i]
+            val ex = px[j][inx] - px[j][ipx]; val ey = py[j][inx] - py[j][ipx]; val ez = pz[j][inx] - pz[j][ipx]
+            var nx = dy * ez - dz * ey; var ny = dz * ex - dx * ez; var nz = dx * ey - dy * ex
+            val l = sqrt(nx * nx + ny * ny + nz * nz).coerceAtLeast(1e-6f)
+            nx /= l; ny /= l; nz /= l
+            m.vert(px[j][i], py[j][i], pz[j][i], nx, ny, nz, i.toFloat() / seg, rows[j])
+        }
+        val stride = seg + 1
+        for (j in 0 until nRows - 1) for (i in 0 until seg) {
+            val a = base0 + j * stride + i
+            m.quad(a, a + 1, a + stride + 1, a + stride)
+        }
+        // Flat top (the plaza)
+        val c = m.vert(0f, 0f, 0f, 0f, 1f, 0f, 0f, 0f)
+        val ring0 = m.count
+        for (i in 0..seg) {
+            val a = (2 * PI * i / seg).toFloat()
+            m.vert(px[0][i], 0f, pz[0][i], 0f, 1f, 0f, i.toFloat() / seg, 0f)
+        }
+        for (i in 0 until seg) m.tri(c, ring0 + i, ring0 + i + 1)
+        if (kind == BaseKind.CASTLE) {
+            // Battlements around the top of the keep.
+            val n = 16
+            val r = prof[0] - 0.22f
+            for (k in 0 until n) {
+                val a = (2 * PI * (k + 0.5) / n).toFloat()
+                box(m, r * sin(a), 0.35f, r * cos(a), 0.62f, 0.7f, 0.42f, a)
+            }
+        }
+        return m
+    }
+
+    /** Box centred at (x, y, z), size w × h × d, turned by [yaw] around Y. */
+    fun box(m: MeshData, x: Float, y: Float, z: Float, w: Float, h: Float, d: Float, yaw: Float) {
+        val c = cos(yaw); val s = sin(yaw)
+        // local axes: right = (c, 0, -s), up = (0,1,0), out = (s, 0, c)
+        fun p(lx: Float, ly: Float, lz: Float) = floatArrayOf(x + lx * c + lz * s, y + ly, z - lx * s + lz * c)
+        val hw = w / 2; val hh = h / 2; val hd = d / 2
+        val faces = arrayOf(
+            floatArrayOf(0f, 0f, 1f), floatArrayOf(0f, 0f, -1f), floatArrayOf(1f, 0f, 0f),
+            floatArrayOf(-1f, 0f, 0f), floatArrayOf(0f, 1f, 0f), floatArrayOf(0f, -1f, 0f),
+        )
+        for (f in faces) {
+            // two in-plane axes for this face
+            val (ux, uy, uz) = if (f[1] != 0f) Triple(1f, 0f, 0f) else if (f[0] != 0f) Triple(0f, 0f, 1f) else Triple(1f, 0f, 0f)
+            val vx = f[1] * uz - f[2] * uy; val vy = f[2] * ux - f[0] * uz; val vz = f[0] * uy - f[1] * ux
+            val corners = arrayOf(-1f to -1f, 1f to -1f, 1f to 1f, -1f to 1f)
+            val idx = IntArray(4)
+            for ((k, cc) in corners.withIndex()) {
+                val lx = (f[0] + ux * cc.first + vx * cc.second) * hw
+                val ly = (f[1] + uy * cc.first + vy * cc.second) * hh
+                val lz = (f[2] + uz * cc.first + vz * cc.second) * hd
+                val q = p(lx, ly, lz)
+                val nx = f[0] * c + f[2] * s; val nz = -f[0] * s + f[2] * c
+                idx[k] = m.vert(q[0], q[1], q[2], nx, f[1], nz, 0f, y + ly)
+            }
+            m.quad(idx[0], idx[1], idx[2], idx[3])
+        }
+    }
+
     /** Flat square in XZ, uv in -1..1 (for paint splats and glows). */
     fun disc(size: Float): MeshData {
         val m = MeshData()

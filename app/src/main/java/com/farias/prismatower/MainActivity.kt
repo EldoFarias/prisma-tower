@@ -96,7 +96,7 @@ class MainActivity : ComponentActivity() {
                                 onGreatMoment = { ReviewPrompt.maybeAsk(this@MainActivity) },
                                 onHome = { go(Screen.HOME) },
                             )
-                            Screen.SHOP -> ShopScreen(host, sound) { go(Screen.HOME) }
+                            Screen.SHOP -> ShopScreen(host, ads, sound) { go(Screen.HOME) }
                             Screen.STATS -> StatsScreen { go(Screen.HOME) }
                         }
                     }

@@ -88,4 +88,23 @@
     <string name="ball_planet">ग्रह</string>
     <string name="ball_eight">8 बॉल</string>
     <string name="ball_lava">लावा</string>
+    <string name="tower_castle">महल</string>
+    <string name="tower_desert">रेगिस्तान</string>
+    <string name="tower_aurora">ध्रुवीय ज्योति</string>
+    <string name="ball_tennis">टेनिस</string>
+    <string name="ball_melon">तरबूज़</string>
+    <string name="ball_soccer">फ़ुटबॉल</string>
+    <string name="ball_basket">बास्केटबॉल</string>
+    <string name="ball_smiley">स्माइली</string>
+    <string name="ball_moon">चाँद</string>
+    <string name="ball_eye">आँख</string>
+    <string name="ball_earth">पृथ्वी</string>
+    <string name="ball_gem">रत्न</string>
+    <string name="ball_galaxy">आकाशगंगा</string>
+    <string name="rarity_common">सामान्य</string>
+    <string name="rarity_rare">दुर्लभ</string>
+    <string name="rarity_epic">महाकाव्य</string>
+    <string name="rarity_legendary">पौराणिक</string>
+    <string name="mystery_box">सरप्राइज़ इनाम</string>
+    <string name="new_item">आपको मिल गया!</string>
 </resources>

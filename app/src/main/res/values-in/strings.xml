@@ -88,4 +88,23 @@
     <string name="ball_planet">Planet</string>
     <string name="ball_eight">Bola 8</string>
     <string name="ball_lava">Lava</string>
+    <string name="tower_castle">Kastil</string>
+    <string name="tower_desert">Gurun</string>
+    <string name="tower_aurora">Aurora</string>
+    <string name="ball_tennis">Tenis</string>
+    <string name="ball_melon">Semangka</string>
+    <string name="ball_soccer">Sepak bola</string>
+    <string name="ball_basket">Basket</string>
+    <string name="ball_smiley">Senyum</string>
+    <string name="ball_moon">Bulan</string>
+    <string name="ball_eye">Mata</string>
+    <string name="ball_earth">Bumi</string>
+    <string name="ball_gem">Permata</string>
+    <string name="ball_galaxy">Galaksi</string>
+    <string name="rarity_common">BIASA</string>
+    <string name="rarity_rare">LANGKA</string>
+    <string name="rarity_epic">EPIK</string>
+    <string name="rarity_legendary">LEGENDARIS</string>
+    <string name="mystery_box">Hadiah kejutan</string>
+    <string name="new_item">KAMU DAPAT!</string>
 </resources>
