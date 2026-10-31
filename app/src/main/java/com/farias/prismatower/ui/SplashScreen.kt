@@ -68,7 +68,9 @@ private const val SMASH_START = 1.78f
 private const val SMASH_STEP = 0.1f
 private const val FLASH = SMASH_START + 5 * SMASH_STEP + 0.04f
 private const val LOGO = FLASH + 0.12f
-private const val END = 4.3f
+private const val END = 5.0f
+/** The whole opening plays this many times slower than the timeline above (real seconds = SLOW × t). */
+private const val SLOW = 1.45f
 
 private class Shard(val ring: Int, val a: Float, val vx: Float, val vy: Float, val spin: Float, val size: Float, val bright: Boolean)
 private class SplashStar(val x: Float, val y: Float, val r: Float, val ph: Float)
@@ -114,23 +116,23 @@ fun SplashScreen(sound: SoundManager, onFinish: () -> Unit) {
     LaunchedEffect(Unit) {
         val start = withFrameNanos { it }
         while (!done) {
-            withFrameNanos { now -> t = (now - start) / 1e9f }
+            withFrameNanos { now -> t = (now - start) / 1e9f / SLOW }
             if (t > END) finish()
         }
     }
     LaunchedEffect(Unit) {
-        launch { delay((RING_DROP * 1000).toLong()); sound.play(Sfx.WHOOSH, 0.6f) }
+        launch { delay((RING_DROP * 1000 * SLOW).toLong()); sound.play(Sfx.WHOOSH, 0.6f) }
         for (i in 0 until 5) launch {
-            delay(((RING_DROP + i * RING_STAGGER + 0.28f) * 1000).toLong())
+            delay(((RING_DROP + i * RING_STAGGER + 0.28f) * 1000 * SLOW).toLong())
             sound.play(Sfx.PLACE, 0.45f, 0.8f + i * 0.08f)
         }
-        launch { delay((FIRST_HIT * 1000).toLong()); sound.play(Sfx.BOUNCE, 0.9f) }
-        launch { delay((BOUNCE_TOP * 1000).toLong()); sound.play(Sfx.COMBO, 0.8f) }
+        launch { delay((FIRST_HIT * 1000 * SLOW).toLong()); sound.play(Sfx.BOUNCE, 0.9f) }
+        launch { delay((BOUNCE_TOP * 1000 * SLOW).toLong()); sound.play(Sfx.COMBO, 0.8f) }
         for (i in 0 until 5) launch {
-            delay(((SMASH_START + i * SMASH_STEP) * 1000).toLong())
+            delay(((SMASH_START + i * SMASH_STEP) * 1000 * SLOW).toLong())
             sound.play(Sfx.GLASS, 0.8f, 0.9f + i * 0.1f)
         }
-        launch { delay((FLASH * 1000).toLong()); sound.play(Sfx.RECORD) }
+        launch { delay((FLASH * 1000 * SLOW).toLong()); sound.play(Sfx.RECORD) }
     }
 
     BoxWithConstraints(
