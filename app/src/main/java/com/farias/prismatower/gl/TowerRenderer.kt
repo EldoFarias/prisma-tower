@@ -21,6 +21,8 @@ import kotlin.math.tan
 class TowerRenderer(private val game: TowerGame) : GLSurfaceView.Renderer {
 
     companion object {
+        /** The sky is rendered at 1/BG_DIV of the screen size. */
+        const val BG_DIV = 3
         /** Radius of the paved top of the base. */
         const val PLAZA = 3.4f
         /** How far the pillar goes above the first ring. */
@@ -32,6 +34,14 @@ class TowerRenderer(private val game: TowerGame) : GLSurfaceView.Renderer {
     private lateinit var bg: Program
     private lateinit var pts: Program
     private lateinit var cloudProg: Program
+    private lateinit var blit: Program
+    // The sky is drawn into a small texture and stretched: it is soft, and full resolution was far too heavy.
+    private val bgFbo = IntArray(1)
+    private val bgTex = IntArray(1)
+    private var bgW = 0
+    private var bgH = 0
+    private var bgFrame = 0
+    private var bgValid = false
     private val bases = arrayOfNulls<Mesh>(3)
     private lateinit var slice: Mesh
     private lateinit var goalRing: Mesh
@@ -68,6 +78,9 @@ class TowerRenderer(private val game: TowerGame) : GLSurfaceView.Renderer {
         bg = Program(Shaders.BG_VS, Shaders.BG_FS)
         pts = Program(Shaders.PT_VS, Shaders.PT_FS)
         cloudProg = Program(Shaders.LIT_VS, Shaders.CLOUD_FS)
+        blit = Program(Shaders.BG_VS, Shaders.BLIT_FS)
+        bgW = 0
+        bgValid = false
         for (k in 0..2) bases[k] = Mesh(Shapes.base(k, PLAZA, seed = 3 + k))
         slice = Mesh(Shapes.wedge(sliceSpan, Tower.RING_INNER, Tower.RING_OUTER, Tower.THICKNESS, 0.075f))
         goalRing = Mesh(Shapes.wedge(TowerGame.TWO_PI, Tower.RING_INNER, Tower.RING_OUTER, Tower.THICKNESS * 1.3f, 0.09f, steps = 96))
@@ -104,6 +117,31 @@ class TowerRenderer(private val game: TowerGame) : GLSurfaceView.Renderer {
         val halfH = atan(3.6f / 13.5f)
         val vfov = Math.toDegrees(2.0 * atan(tan(halfH) / aspect)).toFloat().coerceIn(38f, 72f)
         Matrix.perspectiveM(proj, 0, vfov, aspect, 0.5f, 90f)
+        setupBackgroundTarget()
+    }
+
+    private fun setupBackgroundTarget() {
+        val w = max(1, width / BG_DIV)
+        val h = max(1, height / BG_DIV)
+        if (w == bgW && h == bgH) return
+        if (bgW != 0) {
+            GLES30.glDeleteFramebuffers(1, bgFbo, 0)
+            GLES30.glDeleteTextures(1, bgTex, 0)
+        }
+        bgW = w
+        bgH = h
+        GLES30.glGenTextures(1, bgTex, 0)
+        GLES30.glBindTexture(GLES30.GL_TEXTURE_2D, bgTex[0])
+        GLES30.glTexImage2D(GLES30.GL_TEXTURE_2D, 0, GLES30.GL_RGBA, w, h, 0, GLES30.GL_RGBA, GLES30.GL_UNSIGNED_BYTE, null)
+        GLES30.glTexParameteri(GLES30.GL_TEXTURE_2D, GLES30.GL_TEXTURE_MIN_FILTER, GLES30.GL_LINEAR)
+        GLES30.glTexParameteri(GLES30.GL_TEXTURE_2D, GLES30.GL_TEXTURE_MAG_FILTER, GLES30.GL_LINEAR)
+        GLES30.glTexParameteri(GLES30.GL_TEXTURE_2D, GLES30.GL_TEXTURE_WRAP_S, GLES30.GL_CLAMP_TO_EDGE)
+        GLES30.glTexParameteri(GLES30.GL_TEXTURE_2D, GLES30.GL_TEXTURE_WRAP_T, GLES30.GL_CLAMP_TO_EDGE)
+        GLES30.glGenFramebuffers(1, bgFbo, 0)
+        GLES30.glBindFramebuffer(GLES30.GL_FRAMEBUFFER, bgFbo[0])
+        GLES30.glFramebufferTexture2D(GLES30.GL_FRAMEBUFFER, GLES30.GL_COLOR_ATTACHMENT0, GLES30.GL_TEXTURE_2D, bgTex[0], 0)
+        GLES30.glBindFramebuffer(GLES30.GL_FRAMEBUFFER, 0)
+        bgValid = false
     }
 
     override fun onDrawFrame(gl: GL10?) {
@@ -363,25 +401,43 @@ class TowerRenderer(private val game: TowerGame) : GLSurfaceView.Renderer {
 
     private fun drawBackground(t: TowerLook, time: Float, prog: Float) {
         GLES30.glDepthMask(false)
-        val e = t.env
-        bg.use()
-        bg.v3("uTop", t.bgTop)
-        bg.v3("uBottom", t.bgBottom)
-        bg.v3("uA1", t.aurora[0])
-        bg.v3("uA2", t.aurora[1])
-        bg.v3("uA3", t.aurora[2])
-        bg.v3("uLand1", e.land1)
-        bg.v3("uLand2", e.land2)
-        bg.v3("uSun", e.sun)
-        bg.v3("uCloud", e.cloud)
-        bg.i("uScene", e.scene)
-        bg.f("uTime", time)
-        bg.f("uProg", prog)
-        bg.f("uAspect", width.toFloat() / height)
-        bg.f("uStars", if (t.stars) 1f else 0f)
+        GLES30.glDisable(GLES30.GL_DEPTH_TEST)
+        // Repaint the small sky texture every other frame (it moves slowly).
+        if (!bgValid || bgFrame++ % 2 == 0 || t !== lastBgLook) {
+            lastBgLook = t
+            bgValid = true
+            val e = t.env
+            GLES30.glBindFramebuffer(GLES30.GL_FRAMEBUFFER, bgFbo[0])
+            GLES30.glViewport(0, 0, bgW, bgH)
+            bg.use()
+            bg.v3("uTop", t.bgTop)
+            bg.v3("uBottom", t.bgBottom)
+            bg.v3("uA1", t.aurora[0])
+            bg.v3("uA2", t.aurora[1])
+            bg.v3("uA3", t.aurora[2])
+            bg.v3("uLand1", e.land1)
+            bg.v3("uLand2", e.land2)
+            bg.v3("uSun", e.sun)
+            bg.v3("uCloud", e.cloud)
+            bg.i("uScene", e.scene)
+            bg.f("uTime", time)
+            bg.f("uProg", prog)
+            bg.f("uAspect", width.toFloat() / height)
+            bg.f("uStars", if (t.stars) 1f else 0f)
+            screen.draw()
+            GLES30.glBindFramebuffer(GLES30.GL_FRAMEBUFFER, 0)
+            GLES30.glViewport(0, 0, width, height)
+        }
+        blit.use()
+        GLES30.glActiveTexture(GLES30.GL_TEXTURE0)
+        GLES30.glBindTexture(GLES30.GL_TEXTURE_2D, bgTex[0])
+        blit.i("uTex", 0)
         screen.draw()
+        GLES30.glEnable(GLES30.GL_DEPTH_TEST)
         GLES30.glDepthMask(true)
     }
+
+    private var lastBgLook: TowerLook? = null
 
     private fun h(i: Int, k: Int): Float {
         var n = i * 73856093 xor (k * 19349663)
@@ -394,7 +450,7 @@ class TowerRenderer(private val game: TowerGame) : GLSurfaceView.Renderer {
         val e = t.env
         cloudProg.use()
         cloudProg.m4("uVP", vp)
-        val step = 3.4f
+        val step = 4.6f
         val j0 = ((topY + 8f - (camY + 10f)) / step).toInt().coerceAtLeast(0)
         val j1 = ((topY + 8f - (camY - 36f)) / step).toInt()
         val light = mix(e.cloud, floatArrayOf(1f, 1f, 1f), 0.25f)

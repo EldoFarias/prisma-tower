@@ -421,7 +421,7 @@ out vec4 frag;
 float hash1(float x) { return fract(sin(x * 127.1) * 43758.5453); }
 float hash(vec2 p) { return fract(sin(dot(p, vec2(127.1, 311.7))) * 43758.5453); }
 float vnoise(float x) { float i = floor(x); float f = fract(x); f = f * f * (3.0 - 2.0 * f); return mix(hash1(i), hash1(i + 1.0), f); }
-float fbm1(float x) { float s = 0.0; float a = 0.5; for (int i = 0; i < 5; i++) { s += a * vnoise(x); x = x * 2.03 + 1.7; a *= 0.5; } return s; }
+float fbm1(float x) { float s = 0.0; float a = 0.5; for (int i = 0; i < 4; i++) { s += a * vnoise(x); x = x * 2.03 + 1.7; a *= 0.5; } return s; }
 float noise2(vec2 p) {
     vec2 i = floor(p); vec2 f = fract(p);
     vec2 u = f * f * (3.0 - 2.0 * f);
@@ -530,7 +530,7 @@ void main() {
         float h1 = hz1 + shapeH(x * 0.8, 1.0);
         vec3 far = mix(uLand1, sky, 0.45);
         if (uv.y < h1) {
-            float slope = (shapeH(x * 0.8 + 0.03, 1.0) - shapeH(x * 0.8 - 0.03, 1.0)) / 3.0;
+            float slope = 0.0;
             float lit = (uScene == 1 || uScene == 7) ? 0.0 : clamp(-slope * 10.0, -1.0, 1.0) * 0.6;
             col = mix(far * 0.85, far, ss(h1 - 0.3, h1, uv.y)) * (1.0 + 0.18 * lit);
             if (uScene == 0) {
@@ -560,10 +560,10 @@ void main() {
         float cy = mix(0.08, 1.4, p);
         float dy = uv.y - cy;
         vec2 cp = vec2(x * 1.4 + uTime * 0.012, dy * 3.0);
-        float cd = fbm2(cp * vec2(1.0, 1.8)) * 0.7 + fbm2(cp * 3.3 + 7.0) * 0.3;
+        float cd = fbm2(cp * vec2(1.0, 1.8));
         // Billowy top edge, flatter bottom.
-        float edgeTop = 0.07 + 0.12 * fbm2(vec2(x * 2.2 + uTime * 0.01, 1.0));
-        float edgeBot = -0.1 - 0.05 * fbm2(vec2(x * 1.7, 5.0));
+        float edgeTop = 0.07 + 0.12 * (noise2(vec2(x * 2.2 + uTime * 0.01, 1.0)) * 0.65 + noise2(vec2(x * 5.1, 3.0)) * 0.35);
+        float edgeBot = -0.1 - 0.05 * noise2(vec2(x * 1.7, 5.0));
         float inside = ss(edgeTop, edgeTop - 0.06, dy) * ss(edgeBot, edgeBot + 0.08, dy);
         float cm = inside * ss(0.3, 0.55, cd + 0.15);
         vec3 cc = mix(uCloud * 0.7, mix(uCloud, uSun, 0.3) * 1.08, ss(edgeBot, edgeTop, dy) * (0.55 + 0.45 * cd));
@@ -573,7 +573,7 @@ void main() {
         float h2 = hz2 + shapeH(x * 1.05 + 3.7, 2.0) * 1.25;
         if (uv.y < h2) {
             vec3 nearC = mix(uLand2, sky, 0.12);
-            float slope2 = (shapeH(x * 1.05 + 3.73, 2.0) - shapeH(x * 1.05 + 3.67, 2.0)) / 3.0;
+            float slope2 = 0.0;
             float lit2 = (uScene == 1 || uScene == 7) ? 0.0 : clamp(-slope2 * 10.0, -1.0, 1.0) * 0.6;
             col = mix(nearC * 0.75, nearC, ss(h2 - 0.25, h2, uv.y)) * (1.0 + 0.2 * lit2);
             if (uScene == 0) {
@@ -603,6 +603,15 @@ void main() {
     col *= 1.0 - dot(v, v) * 0.8;
     frag = vec4(col, 1.0);
 }
+"""
+
+    /** Stretches the small sky texture over the screen. */
+    const val BLIT_FS = """#version 300 es
+precision mediump float;
+in vec2 vUv;
+uniform sampler2D uTex;
+out vec4 frag;
+void main() { frag = vec4(texture(uTex, vUv).rgb, 1.0); }
 """
 
     /** Billboard clouds drifting around the tower (alpha blended). */
