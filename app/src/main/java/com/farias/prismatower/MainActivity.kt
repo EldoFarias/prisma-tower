@@ -142,6 +142,6 @@ class MainActivity : ComponentActivity() {
         super.onPause()
         MusicPlayer.onPause()
         host.view?.onPause()
-        if (host.phase == GameHost.Phase.PLAYING && host.touched) host.setPaused(true)
+        if (host.phase == GameHost.Phase.PLAYING && host.touched) host.pauseGame(true)
     }
 }

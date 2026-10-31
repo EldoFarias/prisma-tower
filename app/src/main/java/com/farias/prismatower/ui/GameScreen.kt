@@ -77,7 +77,7 @@ private const val TURN_PER_WIDTH = 3.9f
 fun GameScreen(host: GameHost, ads: AdsManager, sound: SoundManager, onGreatMoment: () -> Unit, onHome: () -> Unit) {
     BackHandler {
         when {
-            host.phase == Phase.PLAYING -> host.setPaused(!host.paused)
+            host.phase == Phase.PLAYING -> host.pauseGame(!host.paused)
             host.phase == Phase.DEAD -> { host.giveUp(); onHome() }
             else -> onHome()
         }
@@ -107,7 +107,7 @@ fun GameScreen(host: GameHost, ads: AdsManager, sound: SoundManager, onGreatMome
             horizontalAlignment = Alignment.CenterHorizontally,
         ) {
             Row(verticalAlignment = Alignment.CenterVertically) {
-                GlassCircleButton(onClick = { host.setPaused(true) }) { PauseIcon(Modifier.size(18.dp)) }
+                GlassCircleButton(onClick = { host.pauseGame(true) }) { PauseIcon(Modifier.size(18.dp)) }
                 Spacer(Modifier.width(12.dp))
                 LevelBar(host, Modifier.weight(1f))
                 Spacer(Modifier.width(56.dp))
@@ -278,13 +278,13 @@ private fun PauseOverlay(host: GameHost, ads: AdsManager, onHome: () -> Unit) {
             Spacer(Modifier.height(4.dp))
             SettingsToggles()
             Spacer(Modifier.height(8.dp))
-            PrimaryButton(stringResource(R.string.resume)) { host.setPaused(false) }
+            PrimaryButton(stringResource(R.string.resume)) { host.pauseGame(false) }
             SecondaryButton(stringResource(R.string.restart)) {
-                host.setPaused(false)
+                host.pauseGame(false)
                 ads.onNewGame { host.retry() }
             }
             SecondaryButton(stringResource(R.string.home)) {
-                host.setPaused(false)
+                host.pauseGame(false)
                 onHome()
             }
             if (ads.privacyOptionsRequired) LinkText(stringResource(R.string.privacy_options)) { ads.showPrivacyOptions() }

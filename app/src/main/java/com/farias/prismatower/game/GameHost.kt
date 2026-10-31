@@ -150,7 +150,7 @@ class GameHost(context: Context) : TowerGame.Callbacks {
         game.turn(radians) // thread-safe
     }
 
-    fun setPaused(p: Boolean) {
+    fun pauseGame(p: Boolean) {
         if (phase != Phase.PLAYING && p) return
         paused = p
         gl { game.paused = p }
