@@ -138,14 +138,17 @@ void main() {
     float gloss = uGloss;
     float metal = uMetal;
 
+#ifdef V_RING
     if (uKind == 3) {
         // Additive halo: brighter at grazing angles.
         float f = pow(1.0 - abs(dot(N, V)), 1.5);
         frag = vec4(uColor * (0.35 + f) * uAlpha, 1.0);
         return;
     }
+#endif
 
-    if (uKind == 1) {
+#ifdef V_PILLAR
+    {
         // Pillar
         float a = atan(vLocal.x, vLocal.z);
         float y = vWorld.y;
@@ -185,7 +188,10 @@ void main() {
             float pulse = 0.5 + 0.5 * sin(uTime * 4.0 - y * 1.5 + h * 6.0);
             emis += uColor2 * trace * (0.35 + 0.65 * pulse) * step(0.25, h);
         }
-    } else if (uKind == 0 || uKind == 4 || uKind == 5) {
+    }
+#endif
+#ifdef V_RING
+    {
         float r = length(vLocal.xz);
         base = mix(base * 0.82, base * 1.12, ss(1.0, 2.7, r));
         if (uKind == 4) {
@@ -200,7 +206,10 @@ void main() {
             metal = 1.0;
             gloss = 120.0;
         }
-    } else if (uKind == 6) {
+    }
+#endif
+#ifdef V_BASE
+    {
         // The base: mountain, castle keep, temple or tech tower.
         float a = atan(vLocal.x, vLocal.z);
         float yb = vWorld.y - uBaseTop;
@@ -248,7 +257,10 @@ void main() {
             emis += uColor2 * seam * 0.08;
             metal = 0.6; gloss = 80.0;
         }
-    } else if (uKind == 2) {
+    }
+#endif
+#ifdef V_BALL
+    {
         // Ball styles, from the object-space normal.
         vec3 n0 = normalize(vLocal);
         float lon = atan(n0.x, n0.z);
@@ -345,6 +357,7 @@ void main() {
             emis += vec3(1.0) * pow(hash3(floor(n0 * 38.0)), 40.0) * (1.5 + sin(uTime * 4.0 + hash3(floor(n0 * 38.0)) * 30.0));
         }
     }
+#endif
 
     vec3 L = normalize(uLight);
     vec3 H = normalize(L + V);
@@ -368,6 +381,12 @@ void main() {
     frag = vec4(col, uAlpha);
 }
 """
+
+    /**
+     * The lit shader specialised for one kind of object. One big shader for everything made every pixel pay
+     * for the most complex path (GPU registers); each variant only contains its own code.
+     */
+    fun lit(variant: String): String = LIT_FS.replaceFirst("#version 300 es\n", "#version 300 es\n#define $variant 1\n")
 
     // ------------------------------------------------------------------ paint splat
 

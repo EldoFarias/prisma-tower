@@ -29,7 +29,12 @@ class TowerRenderer(private val game: TowerGame) : GLSurfaceView.Renderer {
         const val PILLAR_ABOVE = 3.0f
     }
 
+    /** The lit program currently in use (one of the four variants below). */
     private lateinit var lit: Program
+    private lateinit var litRing: Program
+    private lateinit var litPillar: Program
+    private lateinit var litBall: Program
+    private lateinit var litBase: Program
     private lateinit var splat: Program
     private lateinit var bg: Program
     private lateinit var pts: Program
@@ -123,7 +128,11 @@ class TowerRenderer(private val game: TowerGame) : GLSurfaceView.Renderer {
     private val sliceSpan = Tower.SLICE_ANGLE - seam
 
     override fun onSurfaceCreated(gl: GL10?, config: EGLConfig?) {
-        lit = Program(Shaders.LIT_VS, Shaders.LIT_FS)
+        litRing = Program(Shaders.LIT_VS, Shaders.lit("V_RING"))
+        litPillar = Program(Shaders.LIT_VS, Shaders.lit("V_PILLAR"))
+        litBall = Program(Shaders.LIT_VS, Shaders.lit("V_BALL"))
+        litBase = Program(Shaders.LIT_VS, Shaders.lit("V_BASE"))
+        lit = litRing
         splat = Program(Shaders.LIT_VS, Shaders.SPLAT_FS)
         bg = Program(Shaders.BG_VS, Shaders.BG_FS)
         pts = Program(Shaders.PT_VS, Shaders.PT_FS)
@@ -244,21 +253,11 @@ class TowerRenderer(private val game: TowerGame) : GLSurfaceView.Renderer {
         if (rich) drawBackground(t, time, prog) else drawSky(t, time)
 
         // ---------------------------------------------------------- lit scene
-        lit.use()
-        lit.m4("uVP", vp)
-        lit.v3("uCam", eye)
-        lit.v3("uLight", 0.45f, 0.85f, 0.55f)
         cacheLook(t)
-        lit.v3("uSky", cSky)
-        lit.v3("uGround", cGround)
-        lit.v3("uRim", t.rim)
         val fog = cFog
-        lit.v3("uFog", fog)
-        lit.i("uInst", 0)
-        lit.v2("uFogRange", 18f, 44f)
-        lit.f("uTime", time)
-        lit.f("uSpacing", Tower.SPACING)
-        lit.f("uAlpha", 1f)
+        frameTime = time
+        frameLook = t
+        useLit(litPillar)
 
         // Pillar
         val first = max(0, sim.next - 1)
@@ -276,6 +275,7 @@ class TowerRenderer(private val game: TowerGame) : GLSurfaceView.Renderer {
 
         // Finial on top of the pillar: a glossy orb on a collar.
         val env = t.env
+        useLit(litBall)
         Matrix.setIdentityM(model, 0)
         Matrix.translateM(model, 0, 0f, pillarTop + 0.05f, 0f)
         Matrix.scaleM(model, 0, 3.2f, 0.7f, 3.2f)
@@ -291,6 +291,7 @@ class TowerRenderer(private val game: TowerGame) : GLSurfaceView.Renderer {
         sphere.draw()
 
         // The base the tower stands on (it doesn't turn: the tower turns on top of it).
+        useLit(litBase)
         val kind = env.baseKind
         Matrix.setIdentityM(model, 0)
         Matrix.translateM(model, 0, 0f, baseTop, 0f)
@@ -301,6 +302,7 @@ class TowerRenderer(private val game: TowerGame) : GLSurfaceView.Renderer {
         bases[kind]?.draw()
 
         // Rings: the goal is one mesh; all other slices are packed into one instanced draw per kind.
+        useLit(litRing)
         var nSolid = 0
         var nDanger = 0
         val dangerBase = instMax / 3
@@ -356,6 +358,7 @@ class TowerRenderer(private val game: TowerGame) : GLSurfaceView.Renderer {
         lit.i("uInst", 0)
 
         // Ball
+        useLit(litBall)
         val sy = game.ballSy
         val sxz = game.ballSxz
         val b = game.ball
@@ -411,7 +414,7 @@ class TowerRenderer(private val game: TowerGame) : GLSurfaceView.Renderer {
         GLES30.glDisable(GLES30.GL_POLYGON_OFFSET_FILL)
 
         // Rings flying apart
-        lit.use()
+        useLit(litRing)
         val breaks = game.breaks
         for (bi in breaks.indices) {
             val br = breaks[bi]
@@ -477,6 +480,27 @@ class TowerRenderer(private val game: TowerGame) : GLSurfaceView.Renderer {
     }
 
     // ------------------------------------------------------------------ helpers
+
+    private var frameTime = 0f
+    private lateinit var frameLook: TowerLook
+
+    /** Switches to one of the lit variants and gives it this frame's shared uniforms. */
+    private fun useLit(p: Program) {
+        lit = p
+        p.use()
+        p.m4("uVP", vp)
+        p.v3("uCam", eye)
+        p.v3("uLight", 0.45f, 0.85f, 0.55f)
+        p.v3("uSky", cSky)
+        p.v3("uGround", cGround)
+        p.v3("uRim", frameLook.rim)
+        p.v3("uFog", cFog)
+        p.v2("uFogRange", 18f, 44f)
+        p.f("uTime", frameTime)
+        p.f("uSpacing", Tower.SPACING)
+        p.f("uAlpha", 1f)
+        p.i("uInst", 0)
+    }
 
     private val zero = floatArrayOf(0f, 0f, 0f)
 

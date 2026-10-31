@@ -60,6 +60,8 @@ O `TowerView` (GLSurfaceView com MSAA 4×) fica atrás de todas as telas; no men
   "Cenário detalhado" nas configurações e desligamento automático se os quadros ficarem lentos; GL limitado a
   1080 px de largura; GL pausado na splash e nas estatísticas; fases pré-geradas em segundo plano (`LevelCache`);
   animações do Compose leem o tempo só dentro de `graphicsLayer`/`drawWithContent` (sem recompor a cada quadro).
+- O shader iluminado tem 4 variantes (`Shaders.lit("V_RING"|"V_PILLAR"|"V_BALL"|"V_BASE")`, blocos `#ifdef`):
+  um shader único para tudo deixava cada pixel pagar pelo caminho mais pesado. Uniforms comuns vão em `useLit()`.
 - Shaders: validar com glslangValidator antes de enviar (npm `glslang-validator-prebuilt-predownloaded`).
   Uniform usado no vertex E no fragment precisa da MESMA precisão explícita (ex.: `uniform mediump int uInst;`):
   no Xiaomi do Eldo a diferença derruba o app ao abrir ("precision does not match").

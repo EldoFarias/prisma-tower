@@ -36,6 +36,7 @@ import androidx.compose.ui.graphics.drawscope.DrawScope
 import androidx.compose.ui.graphics.drawscope.Stroke
 import androidx.compose.ui.graphics.drawscope.clipRect
 import androidx.compose.ui.graphics.drawscope.rotate
+import androidx.compose.ui.graphics.drawscope.translate
 import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.graphics.lerp
 import androidx.compose.ui.text.font.FontWeight
@@ -141,14 +142,18 @@ fun SplashScreen(sound: SoundManager, onFinish: () -> Unit) {
             .clickable(interactionSource = remember { MutableInteractionSource() }, indication = null) { finish() },
     ) {
         val hDp = maxHeight
-        Canvas(Modifier.fillMaxSize()) { drawSplash(t, shards, stars, sparks) }
+        val shining by remember { androidx.compose.runtime.derivedStateOf { t > LOGO + 0.8f && t < LOGO + 1.6f } }
+        // Static sky: drawn once, faded in by its layer (no redraw per frame).
+        Canvas(Modifier.fillMaxSize().graphicsLayer { alpha = (t / 0.6f).coerceIn(0f, 1f) }) { drawSplashSky(stars) }
+        Canvas(Modifier.fillMaxSize()) { drawSplash(t, shards, sparks) }
 
         // Logo, letter by letter
         Column(
             Modifier
                 .fillMaxWidth()
                 .offset(y = hDp * 0.30f)
-                .graphicsLayer { compositingStrategy = CompositingStrategy.Offscreen }
+                // The light sweep needs an offscreen layer; only use it while the sweep runs.
+                .then(if (shining) Modifier.graphicsLayer { compositingStrategy = CompositingStrategy.Offscreen } else Modifier)
                 .drawWithContent {
                     drawContent()
                     val s = ((t - (LOGO + 0.85f)) / 0.7f)
@@ -204,29 +209,31 @@ fun SplashScreen(sound: SoundManager, onFinish: () -> Unit) {
     }
 }
 
-private fun DrawScope.drawSplash(t: Float, shards: List<Shard>, stars: List<SplashStar>, sparks: List<FloatArray>) {
+private fun DrawScope.drawSplashSky(stars: List<SplashStar>) {
     val w = size.width
     val h = size.height
     if (w < 2f || h < 2f) return
-    // ---------------------------------------------------------------- sky
     drawRect(Brush.verticalGradient(listOf(Color(0xFF07051A), Color(0xFF160B3A), Color(0xFF2A0F4A))))
-    val appear = (t / 0.6f).coerceIn(0f, 1f)
-    blob(Color(0xFF7C3AED), Offset(w * (0.2f + 0.05f * sin(t * 0.7f)), h * 0.2f), w * 0.9f, 0.35f * appear)
-    blob(Color(0xFF06B6D4), Offset(w * 0.95f, h * (0.55f + 0.03f * cos(t))), w * 0.7f, 0.22f * appear)
-    blob(Color(0xFFDB2777), Offset(w * 0.15f, h * 0.95f), w * 0.8f, 0.25f * appear)
+    blob(Color(0xFF7C3AED), Offset(w * 0.22f, h * 0.2f), w * 0.9f, 0.35f)
+    blob(Color(0xFF06B6D4), Offset(w * 0.95f, h * 0.55f), w * 0.7f, 0.22f)
+    blob(Color(0xFFDB2777), Offset(w * 0.15f, h * 0.95f), w * 0.8f, 0.25f)
     for (s in stars) {
-        val tw = 0.35f + 0.65f * (0.5f + 0.5f * sin(t * 2.5f + s.ph))
-        drawCircle(Color.White.copy(alpha = 0.75f * tw * appear), s.r * density * 0.8f, Offset(s.x * w, s.y * h))
+        val tw = 0.35f + 0.65f * (0.5f + 0.5f * sin(s.ph * 3f))
+        drawCircle(Color.White.copy(alpha = 0.75f * tw), s.r * density * 0.8f, Offset(s.x * w, s.y * h))
     }
-    // Soft light beams from the top
     for (k in 0 until 3) {
-        val bx = w * (0.25f + k * 0.25f) + sin(t * 0.5f + k) * w * 0.05f
+        val bx = w * (0.25f + k * 0.25f)
         val path = Path().apply {
             moveTo(bx - w * 0.03f, 0f); lineTo(bx + w * 0.03f, 0f); lineTo(bx + w * 0.18f, h); lineTo(bx - w * 0.18f, h); close()
         }
-        drawPath(path, Brush.verticalGradient(listOf(Color.White.copy(alpha = 0.06f * appear), Color.Transparent)))
+        drawPath(path, Brush.verticalGradient(listOf(Color.White.copy(alpha = 0.06f), Color.Transparent)))
     }
+}
 
+private fun DrawScope.drawSplash(t: Float, shards: List<Shard>, sparks: List<FloatArray>) {
+    val w = size.width
+    val h = size.height
+    if (w < 2f || h < 2f) return
     // ---------------------------------------------------------------- tower
     val cx = w / 2f
     val rx = min(w * 0.36f, h * 0.2f)
@@ -373,26 +380,39 @@ private fun DrawScope.drawSplash(t: Float, shards: List<Shard>, stars: List<Spla
     }
 }
 
+/** Ring outlines built once per screen size (at the origin) and moved with translate. */
+private object RingPaths {
+    var key = 0f
+    val side = arrayOfNulls<Path>(5)
+    val top = arrayOfNulls<Path>(5)
+    val danger = arrayOfNulls<Path>(5)
+}
+
 private fun DrawScope.drawRing(cx: Float, cy: Float, rx: Float, ry: Float, th: Float, inner: Float, c: Color, gapAt: Float, danger: Float?) {
     val irx = inner * 1.15f
     val iry = irx * (ry / rx)
     fun annulus(dy: Float, start: Float, sweep: Float): Path = Path().apply {
         fillType = PathFillType.EvenOdd
-        arcTo(Rect(cx - rx, cy - ry + dy, cx + rx, cy + ry + dy), start, sweep, true)
-        arcTo(Rect(cx - irx, cy - iry + dy, cx + irx, cy + iry + dy), start + sweep, -sweep, false)
+        arcTo(Rect(cx - rx, -ry + dy, cx + rx, ry + dy), start, sweep, true)
+        arcTo(Rect(cx - irx, -iry + dy, cx + irx, iry + dy), start + sweep, -sweep, false)
         close()
     }
     val gapW = 38f
     val start = gapAt + gapW
     val sweep = 360f - gapW
-    // Back half (behind the pillar is already drawn), then side thickness, then the top.
-    val side = annulus(th, start, sweep)
-    drawPath(side, Brush.verticalGradient(listOf(Palette.darker(c, 0.25f), Palette.darker(c, 0.55f)), startY = cy, endY = cy + ry + th))
-    val top = annulus(0f, start, sweep)
-    drawPath(top, Brush.verticalGradient(listOf(Palette.lighter(c, 0.35f), c, Palette.darker(c, 0.1f)), startY = cy - ry, endY = cy + ry))
-    if (danger != null) {
-        val d = annulus(0f, danger, 40f)
-        drawPath(d, Brush.verticalGradient(listOf(Color(0xFFFF6B81), Color(0xFFE11D48)), startY = cy - ry, endY = cy + ry))
+    val idx = (((gapAt - 200f) / 47f) + 0.5f).toInt().coerceIn(0, 4)
+    val key = rx * 31f + cx
+    if (RingPaths.key != key) {
+        RingPaths.key = key
+        for (k in 0 until 5) { RingPaths.side[k] = null; RingPaths.top[k] = null; RingPaths.danger[k] = null }
+    }
+    val side = RingPaths.side[idx] ?: annulus(th, start, sweep).also { RingPaths.side[idx] = it }
+    val top = RingPaths.top[idx] ?: annulus(0f, start, sweep).also { RingPaths.top[idx] = it }
+    val dangerPath = if (danger != null) RingPaths.danger[idx] ?: annulus(0f, danger, 40f).also { RingPaths.danger[idx] = it } else null
+    translate(top = cy) {
+        drawPath(side, Brush.verticalGradient(listOf(Palette.darker(c, 0.25f), Palette.darker(c, 0.55f)), startY = 0f, endY = ry + th))
+        drawPath(top, Brush.verticalGradient(listOf(Palette.lighter(c, 0.35f), c, Palette.darker(c, 0.1f)), startY = -ry, endY = ry))
+        if (dangerPath != null) drawPath(dangerPath, Brush.verticalGradient(listOf(Color(0xFFFF6B81), Color(0xFFE11D48)), startY = -ry, endY = ry))
     }
     // Rim highlight on the front edge
     drawArc(Color.White.copy(alpha = 0.35f), max(start, 10f), 160f, false, Offset(cx - rx, cy - ry), Size(rx * 2f, ry * 2f), style = Stroke(1.5f * density))
