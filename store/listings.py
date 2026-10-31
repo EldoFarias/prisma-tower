@@ -52,7 +52,7 @@ Grátis, com anúncios. Não precisa de conta.
 )
 
 L["en-US"] = dict(
-    title="Prisma Tower: Helix Jump 3D",
+    title="Prisma Tower: Helix Ball 3D",
     short="Spin the tower, bounce the ball down and smash rings on fire!",
     full="""Spin the tower with your finger and guide the bouncing ball ring by ring down to the golden goal. Fall through 3 rings in a row and the ball catches fire, smashing everything in its way! Prisma Tower is a fast, beautiful and addictive 3D game: easy to start, hard to put down.
 
