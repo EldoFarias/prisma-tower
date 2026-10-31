@@ -88,6 +88,7 @@
     <string name="ball_planet">Planet</string>
     <string name="ball_eight">8er-Kugel</string>
     <string name="ball_lava">Lava</string>
+    <string name="detailed_scenery">Detaillierte Kulisse</string>
     <string name="tower_castle">Burg</string>
     <string name="tower_desert">Wüste</string>
     <string name="tower_aurora">Polarlicht</string>

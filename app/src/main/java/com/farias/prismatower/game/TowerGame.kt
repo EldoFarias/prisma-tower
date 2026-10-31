@@ -240,11 +240,13 @@ class TowerGame(private val callbacks: Callbacks) {
     }
 
     private var ambientAcc = 0f
+    /** Air particles (part of the detailed scenery). */
+    var ambientOn = true
 
     /** Snow, petals, embers, fireflies or sparkles drifting in the air, by tower look. */
     private fun emitAmbient(dt: Float) {
         val kind = tower.env.ambient
-        if (kind == Ambient.NONE) return
+        if (kind == Ambient.NONE || !ambientOn) return
         val rate = when (kind) { Ambient.SNOW -> 28f; Ambient.PETALS -> 9f; Ambient.EMBERS -> 16f; Ambient.FIREFLIES -> 6f; else -> 8f }
         ambientAcc += dt * rate
         val c = tower.env.ambientColor

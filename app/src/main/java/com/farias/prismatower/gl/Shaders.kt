@@ -605,6 +605,41 @@ void main() {
 }
 """
 
+    /** Light sky (no scenery): gradient, soft colour glows, stars. Used when detailed scenery is off. */
+    const val SKY_FS = """#version 300 es
+precision mediump float;
+float ss(float a, float b, float x) { float t = clamp((x - a) / (b - a), 0.0, 1.0); return t * t * (3.0 - 2.0 * t); }
+in vec2 vUv;
+uniform vec3 uTop;
+uniform vec3 uBottom;
+uniform vec3 uA1;
+uniform vec3 uA2;
+uniform vec3 uA3;
+uniform float uTime;
+uniform float uAspect;
+uniform float uStars;
+out vec4 frag;
+float hash(vec2 p) { return fract(sin(dot(p, vec2(127.1, 311.7))) * 43758.5453); }
+void main() {
+    vec2 uv = vUv;
+    vec3 col = mix(uBottom, uTop, uv.y);
+    float t = uTime * 0.07;
+    col += uA1 * ss(0.75, 0.0, length((uv - vec2(0.25 + 0.15 * sin(t), 0.85)) * vec2(uAspect, 1.0))) * 0.4;
+    col += uA2 * ss(0.6, 0.0, length((uv - vec2(0.85 + 0.1 * cos(t * 1.3), 0.45)) * vec2(uAspect, 1.0))) * 0.3;
+    col += uA3 * ss(0.7, 0.0, length((uv - vec2(0.3, 0.05)) * vec2(uAspect, 1.0))) * 0.35;
+    if (uStars > 0.5) {
+        vec2 g = uv * vec2(uAspect, 1.0) * 60.0;
+        vec2 cell = floor(g);
+        float h = hash(cell);
+        float d = length(fract(g) - vec2(hash(cell + 1.3), hash(cell + 2.1)));
+        col += vec3(ss(0.08, 0.0, d) * step(0.93, h) * (0.5 + 0.5 * sin(uTime * (1.0 + h * 3.0) + h * 20.0)));
+    }
+    vec2 q = uv - 0.5;
+    col *= 1.0 - dot(q, q) * 0.9;
+    frag = vec4(col, 1.0);
+}
+"""
+
     /** Stretches the small sky texture over the screen. */
     const val BLIT_FS = """#version 300 es
 precision mediump float;

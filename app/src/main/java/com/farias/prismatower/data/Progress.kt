@@ -28,6 +28,9 @@ object Progress {
         private set
     var vibrationOn by mutableStateOf(true)
         private set
+    /** Scenery, clouds and air particles. Turned off by itself on slow phones. */
+    var detailedScenery by mutableStateOf(true)
+        private set
     var notificationsOn by mutableStateOf(true)
         private set
     var notifAsked by mutableStateOf(false)
@@ -87,6 +90,7 @@ object Progress {
         soundOn = prefs.getBoolean("sound", true)
         musicOn = prefs.getBoolean("music", true)
         vibrationOn = prefs.getBoolean("vibration", true)
+        detailedScenery = prefs.getBoolean("detailed_scenery", true)
         notificationsOn = prefs.getBoolean("notifications", true)
         notifAsked = prefs.getBoolean("notif_asked", false)
         towerId = prefs.getString("tower", "neon") ?: "neon"
@@ -180,6 +184,11 @@ object Progress {
     fun toggleMusic() {
         musicOn = !musicOn
         prefs.edit().putBoolean("music", musicOn).apply()
+    }
+
+    fun setDetailedScenery(on: Boolean) {
+        detailedScenery = on
+        prefs.edit().putBoolean("detailed_scenery", on).apply()
     }
 
     fun toggleVibration() {

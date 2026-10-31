@@ -56,6 +56,7 @@ fun SettingsToggles(onNotifications: ((Boolean) -> Unit)? = null) {
         Progress.toggleVibration()
         if (Progress.vibrationOn) Haptics.play(ctx, Haptic.CLEAR)
     }
+    ToggleRow(stringResource(R.string.detailed_scenery), Progress.detailedScenery) { Progress.setDetailedScenery(!Progress.detailedScenery) }
     if (onNotifications != null) {
         ToggleRow(stringResource(R.string.notifications), Progress.notificationsOn) { onNotifications(!Progress.notificationsOn) }
     }

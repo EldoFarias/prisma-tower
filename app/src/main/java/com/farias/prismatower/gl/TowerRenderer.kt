@@ -35,6 +35,14 @@ class TowerRenderer(private val game: TowerGame) : GLSurfaceView.Renderer {
     private lateinit var pts: Program
     private lateinit var cloudProg: Program
     private lateinit var blit: Program
+    private lateinit var sky: Program
+
+    /** Read every frame: detailed scenery on/off. */
+    var detailed: () -> Boolean = { true }
+    /** Called (GL thread) when the phone can't keep up with the detailed scenery. */
+    var onSlow: (() -> Unit)? = null
+    private var slowTime = 0f
+    private var watchTime = 0f
     // The sky is drawn into a small texture and stretched: it is soft, and full resolution was far too heavy.
     private val bgFbo = IntArray(1)
     private val bgTex = IntArray(1)
@@ -79,6 +87,7 @@ class TowerRenderer(private val game: TowerGame) : GLSurfaceView.Renderer {
         pts = Program(Shaders.PT_VS, Shaders.PT_FS)
         cloudProg = Program(Shaders.LIT_VS, Shaders.CLOUD_FS)
         blit = Program(Shaders.BG_VS, Shaders.BLIT_FS)
+        sky = Program(Shaders.BG_VS, Shaders.SKY_FS)
         bgW = 0
         bgValid = false
         for (k in 0..2) bases[k] = Mesh(Shapes.base(k, PLAZA, seed = 3 + k))
@@ -149,6 +158,22 @@ class TowerRenderer(private val game: TowerGame) : GLSurfaceView.Renderer {
         val dt = if (lastNanos == 0L) 0f else (now - lastNanos) / 1e9f
         lastNanos = now
         game.update(dt)
+        val rich = detailed()
+        game.ambientOn = rich
+        // Watchdog: if frames stay slow with the detailed scenery, switch it off for good.
+        if (rich && dt > 0f) {
+            watchTime += dt
+            if (watchTime > 2.5f) {
+                slowTime = if (dt > 0.026f) slowTime + dt else (slowTime - dt * 0.5f).coerceAtLeast(0f)
+                if (slowTime > 1.5f) {
+                    slowTime = 0f
+                    onSlow?.invoke()
+                }
+            }
+        } else {
+            watchTime = 0f
+            slowTime = 0f
+        }
 
         val t = game.tower
         val sim = game.sim
@@ -167,7 +192,7 @@ class TowerRenderer(private val game: TowerGame) : GLSurfaceView.Renderer {
         val topY = Tower.platformTop(0)
         val bottomY = Tower.platformTop(sim.level.platforms.size - 1)
         val prog = ((topY + 2f - camY) / (topY + 2f - bottomY)).coerceIn(0f, 1f)
-        drawBackground(t, time, prog)
+        if (rich) drawBackground(t, time, prog) else drawSky(t, time)
 
         // ---------------------------------------------------------- lit scene
         lit.use()
@@ -282,7 +307,7 @@ class TowerRenderer(private val game: TowerGame) : GLSurfaceView.Renderer {
 
         // Paint splats
         GLES30.glBlendFunc(GLES30.GL_SRC_ALPHA, GLES30.GL_ONE_MINUS_SRC_ALPHA)
-        drawClouds(t, time, camY, topY, bottomY, fog)
+        if (rich) drawClouds(t, time, camY, topY, bottomY, fog)
         GLES30.glEnable(GLES30.GL_POLYGON_OFFSET_FILL)
         GLES30.glPolygonOffset(-2f, -2f)
         splat.use()
@@ -438,6 +463,24 @@ class TowerRenderer(private val game: TowerGame) : GLSurfaceView.Renderer {
     }
 
     private var lastBgLook: TowerLook? = null
+
+    private fun drawSky(t: TowerLook, time: Float) {
+        GLES30.glDepthMask(false)
+        GLES30.glDisable(GLES30.GL_DEPTH_TEST)
+        sky.use()
+        sky.v3("uTop", t.bgTop)
+        sky.v3("uBottom", t.bgBottom)
+        sky.v3("uA1", t.aurora[0])
+        sky.v3("uA2", t.aurora[1])
+        sky.v3("uA3", t.aurora[2])
+        sky.f("uTime", time)
+        sky.f("uAspect", width.toFloat() / height)
+        sky.f("uStars", if (t.stars) 1f else 0f)
+        screen.draw()
+        GLES30.glEnable(GLES30.GL_DEPTH_TEST)
+        GLES30.glDepthMask(true)
+        bgValid = false
+    }
 
     private fun h(i: Int, k: Int): Float {
         var n = i * 73856093 xor (k * 19349663)
