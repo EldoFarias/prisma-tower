@@ -167,12 +167,13 @@ fun SplashScreen(sound: SoundManager, onFinish: () -> Unit) {
         ) {
             Row(horizontalArrangement = Arrangement.Center) {
                 "PRISMA".forEachIndexed { i, ch ->
-                    val lt = t - (LOGO + i * 0.065f)
-                    val sc = spring01(lt)
                     Text(
                         ch.toString(),
                         style = Styles.glow(58, LOGO_COLORS[i], FontWeight.Black),
+                        // Time is read only inside the layer block: the letters are redrawn, never recomposed.
                         modifier = Modifier.graphicsLayer {
+                            val lt = t - (LOGO + i * 0.065f)
+                            val sc = spring01(lt)
                             scaleX = sc
                             scaleY = sc
                             alpha = (lt * 6f).coerceIn(0f, 1f)
@@ -182,20 +183,22 @@ fun SplashScreen(sound: SoundManager, onFinish: () -> Unit) {
                     )
                 }
             }
-            val tw = (t - (LOGO + 0.45f)).coerceAtLeast(0f)
-            val ta = (tw * 3f).coerceIn(0f, 1f)
             Text(
                 "TOWER",
-                style = Styles.glow(26, Color.White, FontWeight.Black).copy(letterSpacing = (4f + 10f * ta).sp),
+                style = Styles.glow(26, Color.White, FontWeight.Black).copy(letterSpacing = 12.sp),
                 modifier = Modifier.graphicsLayer {
+                    val ta = ((t - (LOGO + 0.45f)) * 3f).coerceIn(0f, 1f)
                     alpha = ta
+                    scaleX = 0.8f + 0.2f * ta
                     translationY = (1f - ta) * 30f
                 },
             )
         }
         // Fade out at the very end
-        val fade = ((t - (END - 0.35f)) / 0.35f).coerceIn(0f, 1f)
-        if (fade > 0f) Box(Modifier.fillMaxSize().graphicsLayer { alpha = fade }) { Canvas(Modifier.fillMaxSize()) { drawRect(Color(0xFF07051A)) } }
+        Canvas(Modifier.fillMaxSize()) {
+            val fade = ((t - (END - 0.35f)) / 0.35f).coerceIn(0f, 1f)
+            if (fade > 0f) drawRect(Color(0xFF07051A), alpha = fade)
+        }
     }
 }
 

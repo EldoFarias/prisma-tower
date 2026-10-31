@@ -144,6 +144,17 @@ class GameHost(context: Context) : TowerGame.Callbacks {
         gl { game.revive() }
     }
 
+    /** Stops drawing the 3D view while a screen covers it completely (the splash). */
+    var renderPaused = false
+        set(value) {
+            field = value
+            applyRenderMode()
+        }
+
+    fun applyRenderMode() {
+        view?.renderMode = if (renderPaused) GLSurfaceView.RENDERMODE_WHEN_DIRTY else GLSurfaceView.RENDERMODE_CONTINUOUSLY
+    }
+
     fun turn(radians: Float) {
         if (phase != Phase.PLAYING || paused) return
         if (!touched) touched = true

@@ -70,7 +70,13 @@ class MainActivity : ComponentActivity() {
                 Scaled(appScale) {
                     Crossfade(targetState = screen, animationSpec = tween(300), label = "screen") { current ->
                         when (current) {
-                            Screen.SPLASH -> SplashScreen(sound) { go(Screen.HOME) }
+                            Screen.SPLASH -> {
+                                androidx.compose.runtime.DisposableEffect(Unit) {
+                                    host.renderPaused = true
+                                    onDispose { host.renderPaused = false }
+                                }
+                                SplashScreen(sound) { host.renderPaused = false; go(Screen.HOME) }
+                            }
                             Screen.HOME -> HomeScreen(
                                 ads = ads,
                                 sound = sound,

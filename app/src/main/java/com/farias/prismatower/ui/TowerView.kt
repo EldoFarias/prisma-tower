@@ -24,8 +24,8 @@ fun TowerView(host: GameHost, modifier: Modifier = Modifier) {
                     detailed = { com.farias.prismatower.data.Progress.detailedScenery }
                     onSlow = { post { com.farias.prismatower.data.Progress.changeDetailedScenery(false) } }
                 })
-                renderMode = GLSurfaceView.RENDERMODE_CONTINUOUSLY
                 host.view = this
+                host.applyRenderMode()
             }
         },
         onRelease = { if (host.view === it) host.view = null },
