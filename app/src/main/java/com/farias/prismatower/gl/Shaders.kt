@@ -13,7 +13,7 @@ layout(location=3) in vec4 aInst;      // instanced slices: angle, y, scale xz, 
 layout(location=4) in vec3 aInstColor;
 uniform mat4 uVP;
 uniform mat4 uModel;
-uniform int uInst;
+uniform mediump int uInst;
 out vec3 vWorld;
 out vec3 vNormal;
 out vec3 vLocal;
@@ -50,7 +50,7 @@ in vec3 vNormal;
 in vec3 vLocal;
 in vec2 vUv;
 in vec3 vInstColor;
-uniform int uInst;
+uniform mediump int uInst;
 uniform vec3 uCam;
 uniform vec3 uLight;
 uniform vec3 uColor;

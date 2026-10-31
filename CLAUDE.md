@@ -61,6 +61,8 @@ O `TowerView` (GLSurfaceView com MSAA 4×) fica atrás de todas as telas; no men
   1080 px de largura; GL pausado na splash e nas estatísticas; fases pré-geradas em segundo plano (`LevelCache`);
   animações do Compose leem o tempo só dentro de `graphicsLayer`/`drawWithContent` (sem recompor a cada quadro).
 - Shaders: validar com glslangValidator antes de enviar (npm `glslang-validator-prebuilt-predownloaded`).
+  Uniform usado no vertex E no fragment precisa da MESMA precisão explícita (ex.: `uniform mediump int uInst;`):
+  no Xiaomi do Eldo a diferença derruba o app ao abrir ("precision does not match").
 
 ## Forma de trabalho
 
