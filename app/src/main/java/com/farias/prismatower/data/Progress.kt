@@ -186,7 +186,7 @@ object Progress {
         prefs.edit().putBoolean("music", musicOn).apply()
     }
 
-    fun setDetailedScenery(on: Boolean) {
+    fun changeDetailedScenery(on: Boolean) {
         detailedScenery = on
         prefs.edit().putBoolean("detailed_scenery", on).apply()
     }

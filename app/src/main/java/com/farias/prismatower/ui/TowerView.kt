@@ -22,7 +22,7 @@ fun TowerView(host: GameHost, modifier: Modifier = Modifier) {
                 preserveEGLContextOnPause = true
                 setRenderer(TowerRenderer(host.game).apply {
                     detailed = { com.farias.prismatower.data.Progress.detailedScenery }
-                    onSlow = { post { com.farias.prismatower.data.Progress.setDetailedScenery(false) } }
+                    onSlow = { post { com.farias.prismatower.data.Progress.changeDetailedScenery(false) } }
                 })
                 renderMode = GLSurfaceView.RENDERMODE_CONTINUOUSLY
                 host.view = this
